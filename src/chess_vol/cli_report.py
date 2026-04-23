@@ -13,7 +13,16 @@ from typing import TypedDict
 
 from chess_vol.analyze import PlyResult
 from chess_vol.config import color_for
-from chess_vol.volatility import VolatilityResult
+from chess_vol.volatility import TopLine, VolatilityResult
+
+
+class TopLineJson(TypedDict):
+    """JSON shape for a single engine line (one MultiPV entry)."""
+
+    uci: str
+    san: str
+    pv_san: list[str]
+    eval_cp: int
 
 
 class VolatilityJson(TypedDict):
@@ -30,6 +39,7 @@ class VolatilityJson(TypedDict):
     recurse_depth_used: int
     analyses: int
     color: str | None
+    top_lines: list[TopLineJson]
 
 
 class PlyJson(TypedDict):
@@ -77,6 +87,15 @@ def mode_label(recurse_depth: int) -> str:
     return "shallow" if recurse_depth == 0 else "deep"
 
 
+def _top_line_to_json(line: TopLine) -> TopLineJson:
+    return TopLineJson(
+        uci=line.uci,
+        san=line.san,
+        pv_san=list(line.pv_san),
+        eval_cp=line.eval_cp,
+    )
+
+
 def volatility_to_json(result: VolatilityResult) -> VolatilityJson:
     """Convert a :class:`VolatilityResult` to a JSON-serializable dict."""
     color = color_for(result.score) if result.score is not None else None
@@ -92,6 +111,7 @@ def volatility_to_json(result: VolatilityResult) -> VolatilityJson:
         recurse_depth_used=result.recurse_depth_used,
         analyses=result.analyses,
         color=color,
+        top_lines=[_top_line_to_json(line) for line in result.top_lines],
     )
 
 
@@ -164,6 +184,7 @@ __all__: list[str] = [
     "FenReportJson",
     "ParamsJson",
     "PlyJson",
+    "TopLineJson",
     "VolatilityJson",
     "build_analyze_report",
     "build_fen_report",

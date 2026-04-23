@@ -51,6 +51,7 @@
 
           <div class="board-frame">
             <div id="board"></div>
+            <svg id="arrowLayer" class="arrow-layer" aria-hidden="true"></svg>
           </div>
 
           <div class="sidebar-bar" title="Volatility — how punishing the wrong move is">
@@ -119,7 +120,20 @@
           <span class="toggle-label">Deep analysis</span>
         </label>
 
+        <label class="toggle">
+          <input id="arrowToggle" type="checkbox" checked />
+          <span class="toggle-track"><span class="toggle-knob"></span></span>
+          <span class="toggle-label">Show arrow</span>
+        </label>
+
         <input id="autoAnalyze" type="checkbox" checked hidden />
+
+        <div class="panel-divider"></div>
+
+        <div class="top-lines">
+          <div class="micro-label">Engine lines</div>
+          <ol id="topLinesList" class="top-lines-list"></ol>
+        </div>
 
         <div class="panel-status">
           <span id="editorStatus" class="status"></span>
@@ -134,6 +148,14 @@
           <input id="pgnFile" type="file" accept=".pgn,text/plain" />
           <span>Open file</span>
         </label>
+
+        <textarea
+          id="pgnInput"
+          class="pgn-input"
+          rows="6"
+          spellcheck="false"
+          placeholder="Paste a PGN here, or use Open file above…"
+        ></textarea>
 
         <button id="btnLoadPgn" class="btn btn-block">Load PGN</button>
 
@@ -151,6 +173,20 @@
           <span class="toggle-label">Deep analysis</span>
         </label>
 
+        <label class="toggle">
+          <!-- Shared state with #arrowToggle via JS -->
+          <input id="arrowToggleGame" type="checkbox" checked />
+          <span class="toggle-track"><span class="toggle-knob"></span></span>
+          <span class="toggle-label">Show arrow</span>
+        </label>
+
+        <div class="panel-divider"></div>
+
+        <div class="top-lines">
+          <div class="micro-label">Engine lines</div>
+          <ol id="topLinesListGame" class="top-lines-list"></ol>
+        </div>
+
         <div class="panel-status">
           <span id="gameStatus" class="status"></span>
           <span id="plyStatus"  class="status dim"></span>
@@ -158,17 +194,6 @@
       </aside>
 
     </div><!-- /.board-row -->
-
-    <!-- ── PGN textarea (game tab only) ──────────────────────────────────── -->
-    <section class="pgn-row hidden" data-for="game">
-      <textarea
-        id="pgnInput"
-        class="pgn-input"
-        rows="4"
-        spellcheck="false"
-        placeholder="Paste a PGN here, or use Open file above…"
-      ></textarea>
-    </section>
 
     <!-- ── Game panel (chart + move list, game tab only) ─────────────────── -->
     <section class="game-panel hidden" data-for="game">

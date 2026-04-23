@@ -28,7 +28,7 @@ from chess_vol.cli_report import (
     volatility_to_json,
 )
 from chess_vol.engine import Engine
-from chess_vol.volatility import VolatilityResult
+from chess_vol.volatility import TopLine, VolatilityResult
 
 from .conftest import FakeEngine, evals_to_infos, load_pgn, requires_stockfish
 
@@ -425,6 +425,10 @@ class TestCliReport:
             reason=None,
             recurse_depth_used=2,
             analyses=13,
+            top_lines=[
+                TopLine(uci="e2e4", san="e4", pv_san=["e4", "e5", "Nf3"], eval_cp=120),
+                TopLine(uci="d2d4", san="d4", pv_san=["d4", "d5"], eval_cp=80),
+            ],
         )
 
     def test_volatility_to_json_schema_and_color(self) -> None:
@@ -435,6 +439,10 @@ class TestCliReport:
         assert data["recurse_depth_used"] == 2
         assert data["analyses"] == 13
         assert data["alt_evals_cp"] == [80, 40, 20, -10, -50]
+        assert data["top_lines"] == [
+            {"uci": "e2e4", "san": "e4", "pv_san": ["e4", "e5", "Nf3"], "eval_cp": 120},
+            {"uci": "d2d4", "san": "d4", "pv_san": ["d4", "d5"], "eval_cp": 80},
+        ]
 
         # None-score case
         none_vol = VolatilityResult(

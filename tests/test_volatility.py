@@ -304,3 +304,81 @@ class TestFewerLegalMovesThanMultiPV:
         assert engine.calls[0][2] == 2
         assert result.score is not None
         assert len(result.alt_evals_cp) == 1
+
+
+# --------------------------------------------------------------------------- #
+# Top engine lines (for UI arrow / engine-lines panel)                         #
+# --------------------------------------------------------------------------- #
+
+
+class TestTopLines:
+    """``VolatilityResult.top_lines`` carries first-move UCI/SAN + PV in SAN."""
+
+    def test_top_lines_populated_from_pv(self) -> None:
+        board = chess.Board()  # startpos, White to move
+        # Build three candidate first-move PVs. The best-first sort is driven
+        # by eval, not order here — e2e4 is best, d2d4 second, g1f3 third.
+        pv_e4 = [chess.Move.from_uci(u) for u in ["e2e4", "e7e5", "g1f3"]]
+        pv_d4 = [chess.Move.from_uci(u) for u in ["d2d4", "d7d5", "c2c4"]]
+        pv_nf3 = [chess.Move.from_uci(u) for u in ["g1f3", "g8f6"]]
+        infos = evals_to_infos(
+            [40, 30, 10, 0, -10, -20],
+            moves=[
+                chess.Move.from_uci("e2e4"),
+                chess.Move.from_uci("d2d4"),
+                chess.Move.from_uci("g1f3"),
+                chess.Move.from_uci("c2c4"),
+                chess.Move.from_uci("b1c3"),
+                chess.Move.from_uci("e2e3"),
+            ],
+        )
+        # Replace the default 1-move pv for the first three with richer PVs.
+        infos[0]["pv"] = pv_e4
+        infos[1]["pv"] = pv_d4
+        infos[2]["pv"] = pv_nf3
+
+        engine = FakeEngine(scripts=[infos])
+        result = compute_volatility(board, engine)
+
+        assert len(result.top_lines) == 6
+        assert result.top_lines[0].uci == "e2e4"
+        assert result.top_lines[0].san == "e4"
+        assert result.top_lines[0].eval_cp == 40
+        assert result.top_lines[0].pv_san == ["e4", "e5", "Nf3"]
+        assert result.top_lines[1].uci == "d2d4"
+        assert result.top_lines[1].pv_san == ["d4", "d5", "c4"]
+        assert result.top_lines[2].san == "Nf3"
+        assert result.top_lines[2].pv_san == ["Nf3", "Nf6"]
+        # Entries beyond index 2 only had a single-move pv.
+        assert result.top_lines[3].pv_san == ["c4"]
+
+    def test_top_lines_empty_when_no_pv(self) -> None:
+        """``evals_to_infos`` with no moves → empty pv → top_lines is empty."""
+        board = chess.Board()
+        engine = FakeEngine(scripts=[evals_to_infos([40, 30, 10, 0, -10, -20])])
+        result = compute_volatility(board, engine)
+        assert result.top_lines == []
+
+    def test_top_lines_only_at_root_not_on_children(self) -> None:
+        """Children in recursive mode do not populate top_lines (perf-only check
+        via the JSON shape: the public result's list is the root's MultiPV)."""
+        board = chess.Board()
+        moves = [
+            chess.Move.from_uci("e2e4"),
+            chess.Move.from_uci("d2d4"),
+            chess.Move.from_uci("g1f3"),
+            chess.Move.from_uci("c2c4"),
+            chess.Move.from_uci("b1c3"),
+            chess.Move.from_uci("e2e3"),
+        ]
+        root_infos = evals_to_infos([40, 30, 10, 0, -10, -20], moves=moves)
+        child_infos = evals_to_infos([0, -10, -20, -30, -40, -50], moves=moves)
+        # 1 (root) + 3 (top-k children) = 4 scripted responses for k=3, depth=1.
+        engine = FakeEngine(scripts=[root_infos, child_infos, child_infos, child_infos])
+        result = compute_volatility(board, engine, recurse_depth=1, recurse_k=3)
+        # Root-level top_lines still reflects the root MultiPV.
+        ucis = [line.uci for line in result.top_lines]
+        assert ucis[0] == "e2e4"
+        assert ucis[1] == "d2d4"
+        # All 6 root lines present — child top_lines are discarded internally.
+        assert len(result.top_lines) == 6

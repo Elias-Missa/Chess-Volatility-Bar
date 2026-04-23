@@ -498,25 +498,20 @@ button, input, textarea, select { font: inherit; color: inherit; }
   letter-spacing: 0.02em;
 }
 
-/* ── PGN textarea ───────────────────────────────────────────── */
-.pgn-row {
-  width: 100%;
-  max-width: calc(var(--board-size) + var(--bar-width) * 2 + var(--panel-w) + 50px);
-}
-
+/* ── PGN textarea (lives inside the Game side panel) ────────── */
 .pgn-input {
   display: block;
   width: 100%;
-  padding: 10px 12px;
+  padding: 8px 10px;
   background: var(--bg-2);
   border: 1px solid var(--border-1);
   border-radius: var(--r-sm);
   color: var(--fg);
   font-family: var(--font-mono);
-  font-size: 11.5px;
-  line-height: 1.6;
+  font-size: 11px;
+  line-height: 1.55;
   resize: vertical;
-  min-height: 90px;
+  min-height: 120px;
   transition: border-color 140ms, box-shadow 140ms;
 }
 .pgn-input:focus {
@@ -710,6 +705,24 @@ button, input, textarea, select { font: inherit; color: inherit; }
 
 #board { width: var(--board-size); }
 
+/* ── Arrow overlay ──────────────────────────────────────────── */
+.arrow-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+  z-index: 5;
+}
+.arrow-layer .arrow-shaft,
+.arrow-layer .arrow-head {
+  fill: var(--green);
+  stroke: var(--green);
+  filter: drop-shadow(0 0 6px var(--green-glow));
+  opacity: 0.85;
+}
+
 /* ── Game panel ─────────────────────────────────────────────── */
 .game-panel {
   width: 100%;
@@ -803,6 +816,72 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .move-table tr:nth-child(even) .move-num,
 .move-table tr:nth-child(even) .move-cell:not(.active) {
   background: rgba(255,255,255,0.02);
+}
+
+/* ── Engine lines panel ─────────────────────────────────────── */
+.top-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.top-lines-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 160px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-2) transparent;
+  background: var(--bg-2);
+  border: 1px solid var(--border-1);
+  border-radius: var(--r-sm);
+}
+.top-lines-list::-webkit-scrollbar { width: 4px; }
+.top-lines-list::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 2px; }
+
+.top-lines-list:empty::after {
+  content: "—";
+  display: block;
+  padding: 8px 10px;
+  color: var(--fg-4);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-align: center;
+}
+
+.top-line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.4;
+}
+.top-line:last-child { border-bottom: none; }
+.top-line.best { background: rgba(57,255,20,0.04); }
+.top-line.best .top-line-pv { color: var(--fg); font-weight: 600; }
+
+.top-line-eval {
+  flex-shrink: 0;
+  min-width: 46px;
+  font-weight: 700;
+  color: var(--fg-2);
+  text-align: right;
+  letter-spacing: -0.02em;
+}
+.top-line-eval[data-sign="pos"] { color: var(--green); }
+.top-line-eval[data-sign="neg"] { color: var(--red-hi); }
+
+.top-line-pv {
+  flex: 1;
+  min-width: 0;
+  color: var(--fg-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ── Footer ─────────────────────────────────────────────────── */

@@ -54,6 +54,14 @@
   const moveListWrap  = $("#moveListWrap");
   const chartCanvas   = $("#chart");
 
+  const arrowToggle      = $("#arrowToggle");
+  const arrowToggleGame  = $("#arrowToggleGame");
+  const arrowLayer       = $("#arrowLayer");
+  const topLinesList     = $("#topLinesList");
+  const topLinesListGame = $("#topLinesListGame");
+  const boardFrameEl     = document.querySelector(".board-frame");
+  const SVG_NS           = "http://www.w3.org/2000/svg";
+
   // ── Tab switching ─────────────────────────────────────────────────────── //
   function setTab(name) {
     document.querySelectorAll(".tab").forEach((t) => {
@@ -89,6 +97,20 @@
     return !!(deepToggle && deepToggle.checked);
   }
 
+  // ── Shared arrow toggle state ─────────────────────────────────────────── //
+  function syncArrow(source) {
+    const val = source.checked;
+    if (arrowToggle && arrowToggle !== source) arrowToggle.checked = val;
+    if (arrowToggleGame && arrowToggleGame !== source) arrowToggleGame.checked = val;
+    refreshArrow();
+  }
+  if (arrowToggle)     arrowToggle.addEventListener("change",     () => syncArrow(arrowToggle));
+  if (arrowToggleGame) arrowToggleGame.addEventListener("change", () => syncArrow(arrowToggleGame));
+
+  function arrowEnabled() {
+    return !!(arrowToggle && arrowToggle.checked);
+  }
+
   // ── Board ─────────────────────────────────────────────────────────────── //
   let suppressSync = false;
 
@@ -98,6 +120,12 @@
     dropOffBoard: "trash",
     position:     "start",
     pieceTheme:   "/vendor/img/pieces/{piece}.png",
+    onDrop: (source, target) => {
+      if (suppressSync) return;
+      if (source === "spare" || target === "offboard" || source === target) return;
+      const current = getTurn();
+      setTurn(current === "w" ? "b" : "w");
+    },
     onChange: () => {
       if (suppressSync) return;
       syncFenFromBoard();
@@ -105,7 +133,10 @@
     },
   });
 
-  window.addEventListener("resize", () => board.resize());
+  window.addEventListener("resize", () => {
+    board.resize();
+    refreshArrow();
+  });
 
   function assembleFen() {
     const parts = (fenInput.value || "").trim().split(/\s+/);
@@ -118,6 +149,8 @@
     fenInput.value = fen;
     editorStatus.textContent = validateFen(fen) ? "" : "⚠ Incomplete or illegal position";
     syncTurnToggleFromFen();
+    setTopMove(null);
+    clearTopLinesLists();
   }
 
   function syncBoardFromFen(fen) {
@@ -205,7 +238,10 @@
     scheduleAutoAnalyze();
   });
 
-  btnFlip.addEventListener("click", () => board.flip());
+  btnFlip.addEventListener("click", () => {
+    board.flip();
+    setTimeout(refreshArrow, 0);
+  });
 
   btnAnalyzeFen.addEventListener("click", () => {
     const fen = fenInput.value.trim();
@@ -299,6 +335,149 @@
     );
   }
 
+  // ── Arrow overlay ─────────────────────────────────────────────────────── //
+  let lastTopMoveUci = null;
+
+  function squareCenter(sq) {
+    if (!boardFrameEl) return null;
+    const el = document.querySelector(`#board .square-${sq}`);
+    if (!el) return null;
+    const frameRect = boardFrameEl.getBoundingClientRect();
+    const r = el.getBoundingClientRect();
+    return {
+      x: r.left - frameRect.left + r.width / 2,
+      y: r.top  - frameRect.top  + r.height / 2,
+      size: r.width,
+    };
+  }
+
+  function clearArrow() {
+    if (!arrowLayer) return;
+    while (arrowLayer.firstChild) arrowLayer.removeChild(arrowLayer.firstChild);
+  }
+
+  function drawArrow(uci) {
+    if (!arrowLayer || !uci || uci.length < 4) { clearArrow(); return; }
+    const from = uci.slice(0, 2);
+    const to   = uci.slice(2, 4);
+    const a = squareCenter(from);
+    const b = squareCenter(to);
+    if (!a || !b) { clearArrow(); return; }
+
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const len = Math.hypot(dx, dy);
+    if (len < 1) { clearArrow(); return; }
+    const ux = dx / len;
+    const uy = dy / len;
+
+    const sq    = a.size;
+    const w     = Math.max(6,  sq * 0.18);
+    const head  = Math.max(10, sq * 0.34);
+    const inset = sq * 0.22;
+
+    const sx = a.x + ux * inset;
+    const sy = a.y + uy * inset;
+    const ex = b.x - ux * inset;
+    const ey = b.y - uy * inset;
+
+    const shaftEndX = ex - ux * head;
+    const shaftEndY = ey - uy * head;
+
+    const px =  uy;
+    const py = -ux;
+
+    const hw = w * 0.5;
+    const shaft = document.createElementNS(SVG_NS, "polygon");
+    shaft.setAttribute(
+      "points",
+      [
+        `${sx + px * hw},${sy + py * hw}`,
+        `${shaftEndX + px * hw},${shaftEndY + py * hw}`,
+        `${shaftEndX - px * hw},${shaftEndY - py * hw}`,
+        `${sx - px * hw},${sy - py * hw}`,
+      ].join(" ")
+    );
+    shaft.setAttribute("class", "arrow-shaft");
+
+    const hhw = w * 1.1;
+    const headPoly = document.createElementNS(SVG_NS, "polygon");
+    headPoly.setAttribute(
+      "points",
+      [
+        `${ex},${ey}`,
+        `${shaftEndX + px * hhw},${shaftEndY + py * hhw}`,
+        `${shaftEndX - px * hhw},${shaftEndY - py * hhw}`,
+      ].join(" ")
+    );
+    headPoly.setAttribute("class", "arrow-head");
+
+    clearArrow();
+    arrowLayer.appendChild(shaft);
+    arrowLayer.appendChild(headPoly);
+  }
+
+  function refreshArrow() {
+    if (!arrowEnabled() || !lastTopMoveUci) { clearArrow(); return; }
+    drawArrow(lastTopMoveUci);
+  }
+
+  function setTopMove(uci) {
+    lastTopMoveUci = uci || null;
+    refreshArrow();
+  }
+
+  // ── Engine lines panel ────────────────────────────────────────────────── //
+  function formatEvalSigned(cp, turn) {
+    if (cp == null) return "—";
+    const w = turn === "b" ? -cp : cp;
+    if (Math.abs(w) >= 1000) return (w > 0 ? "+" : "−") + "M";
+    const abs = (Math.abs(w) / 100).toFixed(2);
+    return (w >= 0 ? "+" : "−") + abs;
+  }
+
+  function activeTopLinesEl() {
+    const gameTabActive = document
+      .querySelector(".tab[data-tab='game']")
+      ?.classList.contains("active");
+    return gameTabActive ? topLinesListGame : topLinesList;
+  }
+
+  function clearTopLinesLists() {
+    [topLinesList, topLinesListGame].forEach((el) => {
+      if (el) el.innerHTML = "";
+    });
+  }
+
+  function renderTopLines(volJson, turn) {
+    clearTopLinesLists();
+    const target = activeTopLinesEl();
+    if (!target) return;
+    const lines = (volJson && volJson.top_lines) || [];
+    if (!lines.length) return;
+
+    lines.forEach((line, idx) => {
+      const li = document.createElement("li");
+      li.className = "top-line" + (idx === 0 ? " best" : "");
+
+      const evalSpan = document.createElement("span");
+      evalSpan.className = "top-line-eval";
+      evalSpan.textContent = formatEvalSigned(line.eval_cp, turn);
+      const w = turn === "b" ? -line.eval_cp : line.eval_cp;
+      evalSpan.dataset.sign = w > 30 ? "pos" : w < -30 ? "neg" : "neutral";
+
+      const pvSpan = document.createElement("span");
+      pvSpan.className = "top-line-pv";
+      const pv = Array.isArray(line.pv_san) ? line.pv_san.slice(0, 6) : [line.san];
+      pvSpan.textContent = pv.join(" ");
+      pvSpan.title = Array.isArray(line.pv_san) ? line.pv_san.join(" ") : line.san;
+
+      li.appendChild(evalSpan);
+      li.appendChild(pvSpan);
+      target.appendChild(li);
+    });
+  }
+
   // ── Analyze FEN ──────────────────────────────────────────────────────── //
   let inflightFen = null;
 
@@ -321,6 +500,11 @@
       const turn = fen.trim().split(/\s+/)[1] || "w";
       renderEvalBar(data.volatility.best_eval_cp, turn);
       renderVolBar(data.volatility);
+      renderTopLines(data.volatility, turn);
+      const topUci = data.volatility.top_lines && data.volatility.top_lines[0]
+        ? data.volatility.top_lines[0].uci
+        : null;
+      setTopMove(topUci);
       const modeStr = data.mode === "deep" ? "deep" : "shallow";
       editorStatus.textContent =
         `${modeStr} · ${data.volatility.analyses} engine call${data.volatility.analyses !== 1 ? "s" : ""}`;
@@ -347,6 +531,8 @@
     plyStatus.textContent   = "";
     chartWrap.classList.add("hidden");
     moveListWrap.classList.add("hidden");
+    clearTopLinesLists();
+    setTopMove(null);
     destroyChart();
   }
 
@@ -435,10 +621,10 @@
     const entry = loadedPlies[idx];
 
     suppressSync = true;
-    try { board.position(entry.fen_after.split(/\s+/)[0], true); }
+    try { board.position(entry.fen_before.split(/\s+/)[0], true); }
     finally { suppressSync = false; }
 
-    fenInput.value = entry.fen_after;
+    fenInput.value = entry.fen_before;
     syncTurnToggleFromFen();
 
     const r = plyResults[idx];
@@ -446,6 +632,12 @@
       const turn = entry.fen_before.split(/\s+/)[1] || "w";
       renderEvalBar(r.ply.volatility.best_eval_cp, turn);
       renderVolBar(r.ply.volatility);
+      renderTopLines(r.ply.volatility, turn);
+      const tl = r.ply.volatility.top_lines;
+      setTopMove(tl && tl[0] ? tl[0].uci : null);
+    } else {
+      clearTopLinesLists();
+      setTopMove(null);
     }
 
     document.querySelectorAll(".move-cell").forEach((c) =>

@@ -123,6 +123,21 @@ def _is_decided(e1_cp: int, e2_cp: int) -> bool:
 
 
 @dataclass
+class TopLine:
+    """A single engine line (best or alternative) returned from the root MultiPV.
+
+    ``uci``/``san`` describe the first move of the line (the one the engine
+    would actually play for that candidate); ``pv_san`` is the full principal
+    variation in SAN for UI display (truncated to a small number of plies).
+    """
+
+    uci: str
+    san: str
+    pv_san: list[str]
+    eval_cp: int
+
+
+@dataclass
 class VolatilityResult:
     """Output of :func:`compute_volatility`. See README §5.2."""
 
@@ -157,6 +172,10 @@ class VolatilityResult:
     analyses: int = 0
     """Number of engine ``analyse`` calls performed (for budget verification)."""
 
+    top_lines: list[TopLine] = field(default_factory=list)
+    """Top engine lines from the root MultiPV call (best-first). Empty for
+    non-root / terminal results. Children do not populate this to save work."""
+
 
 # --------------------------------------------------------------------------- #
 # Internal raw result                                                          #
@@ -173,6 +192,7 @@ class _RawResult:
     decided: bool
     reason: str | None
     analyses: int
+    top_lines: list[TopLine] = field(default_factory=list)
 
 
 _TERMINAL_RAW = _RawResult(
@@ -186,6 +206,9 @@ _TERMINAL_RAW = _RawResult(
     analyses=0,
 )
 
+_PV_SAN_MAX_PLIES = 8
+"""Upper bound on how many plies of the PV we serialize in SAN."""
+
 
 # --------------------------------------------------------------------------- #
 # Core engine-facing computation                                               #
@@ -194,6 +217,42 @@ _TERMINAL_RAW = _RawResult(
 
 WeightsFn = Callable[[int], list[float]]
 ScaleFn = Callable[[int, int], float]
+
+
+def _build_top_lines(
+    board: chess.Board,
+    line_evals: list[tuple[int, dict[str, Any]]],
+) -> list[TopLine]:
+    """Build ``TopLine`` entries for each MultiPV line on ``board``.
+
+    ``line_evals`` must already be sorted best-first and each info must carry
+    a ``pv`` list of :class:`chess.Move` (empty pv → the line is skipped).
+    SAN generation walks a throwaway board copy so ``board`` is untouched.
+    """
+    lines: list[TopLine] = []
+    for cp, info in line_evals:
+        pv = info.get("pv") or []
+        if not pv:
+            continue
+        first = pv[0]
+        uci = first.uci()
+        scratch = board.copy(stack=False)
+        pv_san: list[str] = []
+        try:
+            first_san = scratch.san(first)
+        except (ValueError, AssertionError):
+            continue
+        pv_san.append(first_san)
+        scratch.push(first)
+        for mv in pv[1:_PV_SAN_MAX_PLIES]:
+            try:
+                san = scratch.san(mv)
+            except (ValueError, AssertionError):
+                break
+            pv_san.append(san)
+            scratch.push(mv)
+        lines.append(TopLine(uci=uci, san=first_san, pv_san=pv_san, eval_cp=int(cp)))
+    return lines
 
 
 def _compute_local(
@@ -239,6 +298,8 @@ def _compute_raw(
     child_depth: int,
     weights_fn: WeightsFn,
     scale_fn: ScaleFn,
+    *,
+    build_top_lines: bool = False,
 ) -> _RawResult:
     """Recursive raw computation. Does NOT normalize; that happens only at root."""
 
@@ -285,6 +346,7 @@ def _compute_raw(
     evals = [cp for cp, _ in line_evals]
     best_cp = evals[0]
     alts_cp = evals[1:]
+    top_lines = _build_top_lines(board, line_evals) if build_top_lines else []
 
     # Only-legal-move case: local V is undefined / treated as 0.
     reason: str | None
@@ -345,6 +407,7 @@ def _compute_raw(
         decided=decided,
         reason=reason,
         analyses=analyses,
+        top_lines=top_lines,
     )
 
 
@@ -423,6 +486,7 @@ def compute_volatility(
         child_depth=child_depth,
         weights_fn=weights_fn,
         scale_fn=s_fn,
+        build_top_lines=True,
     )
 
     # Root-level only_move / terminal short-circuit (README §3.5).
@@ -438,6 +502,7 @@ def compute_volatility(
             reason=raw.reason,
             recurse_depth_used=recurse_depth,
             analyses=raw.analyses,
+            top_lines=raw.top_lines,
         )
 
     score = 100.0 * (1.0 - math.exp(-raw.total_raw / k_value))
@@ -452,4 +517,5 @@ def compute_volatility(
         reason=None,
         recurse_depth_used=recurse_depth,
         analyses=raw.analyses,
+        top_lines=raw.top_lines,
     )
