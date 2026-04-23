@@ -1,3 +1,32 @@
+Metadata-Version: 2.4
+Name: chess-vol
+Version: 0.1.0
+Summary: Chess Volatility Bar — measures how sharp/volatile a chess position is.
+Author: Chess Volatility Bar
+License: MIT
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: python-chess>=1.999
+Requires-Dist: numpy>=1.26
+Requires-Dist: typer>=0.12
+Provides-Extra: cli
+Requires-Dist: rich>=13; extra == "cli"
+Provides-Extra: web
+Requires-Dist: fastapi>=0.110; extra == "web"
+Requires-Dist: uvicorn[standard]>=0.27; extra == "web"
+Requires-Dist: sse-starlette>=2.0; extra == "web"
+Provides-Extra: dev
+Requires-Dist: pytest>=8.0; extra == "dev"
+Requires-Dist: pytest-mock>=3.12; extra == "dev"
+Requires-Dist: mypy>=1.8; extra == "dev"
+Requires-Dist: ruff>=0.4; extra == "dev"
+Requires-Dist: black>=24.0; extra == "dev"
+Requires-Dist: rich>=13; extra == "dev"
+Requires-Dist: fastapi>=0.110; extra == "dev"
+Requires-Dist: uvicorn[standard]>=0.27; extra == "dev"
+Requires-Dist: sse-starlette>=2.0; extra == "dev"
+Requires-Dist: httpx>=0.27; extra == "dev"
+
 # Chess-Volatility-Bar
 
 # Chess Volatility Bar — Implementation Guide
@@ -448,34 +477,19 @@ The constants are coupled. Don't tune them independently. Suggested order: tune 
 ## 8. Phase 3 — Local Web App
 
 FastAPI single-file server:
-- `POST /analyze/fen` → `{fen, depth, multipv, recurse_depth?, recurse_k?, child_depth?, deep?}` → `FenReportJson` (same schema as `chess-vol fen --output`).
-- `POST /analyze/pgn` → `{pgn, deep?: bool, ...}` → Server-Sent Events stream. Event sequence: `start` (mode + params), one `ply` per ply (full `PlyJson`), `done` (plies + engine-call count), or `error` on failure. Critical for deep mode where analysis takes minutes.
-- `GET /` → static frontend (served from `web/`).
-- `GET /healthz` → simple liveness check (`{"status": "ok"}`).
+- `POST /analyze/fen` → `{fen, depth, multipv, recurse_depth?, recurse_k?, child_depth?}` → `VolatilityResult` JSON.
+- `POST /analyze/pgn` → `{pgn, deep?: bool, ...}` → stream per-ply results via Server-Sent Events. Critical for deep mode where analysis takes minutes.
+- `GET /` → static frontend.
 
 ### Frontend
 
-Vanilla JS + `chessboard.js` + `chess.js` + `Chart.js` — all assets vendored locally under `web/vendor/` (no CDN, no internet required at runtime, no build step). One page, shared board:
+One page:
+- Textarea for PGN, "Analyze" button, "Deep analysis" checkbox (tooltip: "5–10× slower, measures danger in resulting positions too").
+- Line chart: three series — eval, shallow volatility, deep volatility (latter populated only if deep mode ran).
+- Board viewer (`chessboard.js` via CDN) that scrubs with the chart.
+- Vertical volatility bar next to the board, colored per §3.6. Deep mode splits visually into "local" and "reply" components.
 
-- **Position editor (default tab):** drag-and-drop board with spare pieces; `dropOffBoard: 'trash'` for removal. FEN input is two-way bound to the board + side-to-move / castling / en-passant / halfmove / fullmove fields. "Clear board", "Starting position", "Flip board", "Analyze position" buttons. Auto-analyze toggle (debounced ~450 ms) re-runs as you edit.
-- **Game (PGN) tab:** paste or upload a `.pgn`, "Load game" to populate a clickable move list, "Analyze game" to stream per-ply results into a Chart.js line chart (V + white-POV eval series). Click any chart point or move-list entry to scrub the board/eval-bar/vol-bar to that ply.
-- **Standard eval bar + volatility bar side-by-side** next to the board in both tabs. Eval bar is bipolar white/black, mapped via `tanh(cp/400)`; mate scores pin to full. Volatility bar is unipolar 0–100 colored per §3.6, with a dashed split line in deep mode marking the `local` vs `reply` boundary (read from `local_raw_cp / raw_cp`). Bar dims when `decided=true`; renders "—" when `score=null`.
-- **Deep-analysis checkbox** at the top — shared by both tabs, sends `deep=true` on every request.
-
-CORS: allow `localhost` / `127.0.0.1` (any port) and `https://www.chess.com` (extension hits this server).
-
-### Run it
-
-```
-pip install -e .[web]
-export STOCKFISH_PATH=/path/to/stockfish   # or let auto-detection handle it
-chess-vol serve                            # http://127.0.0.1:8000/
-chess-vol serve --host 0.0.0.0 --port 9000 --reload
-```
-
-`chess-vol serve` is a thin wrapper over `uvicorn chess_vol.server:app`. The
-frontend at `/` uses the same origin for its API calls, so no CORS configuration
-is needed for local use.
+CORS: allow `localhost` and `chess.com` origins (extension hits this server).
 
 ---
 
@@ -532,7 +546,7 @@ Surface these to the user; don't silently decide.
 - [ ] **Phase 1:** `compute_volatility` works one-ply, all unit + integration tests pass.
 - [ ] **Phase 1.5:** `recurse_depth > 0` works; composition + side-to-move + regression tests pass.
 - [ ] **Phase 2:** CLI runs end-to-end on a PGN in both modes; `K_shallow`, `K_deep`, and all other constants tuned against a real corpus.
-- [x] **Phase 3:** FastAPI server (`chess-vol serve`) + drag-and-drop board editor; PGN paste/upload streams per-ply volatility via SSE; eval bar + volatility bar rendered side-by-side in both tabs.
+- [ ] **Phase 3:** Web app renders eval + volatility chart for uploaded PGN, supports both modes, streams progress.
 - [ ] **Phase 4:** Extension shows a live one-ply bar on chess.com, backed by local server.
 
 Build sequentially. Do not start a phase until the previous is done and its tests pass.

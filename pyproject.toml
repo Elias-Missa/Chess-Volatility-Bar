@@ -1,0 +1,82 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chess-vol"
+version = "0.1.0"
+description = "Chess Volatility Bar — measures how sharp/volatile a chess position is."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Chess Volatility Bar" }]
+dependencies = [
+    "python-chess>=1.999",
+    "numpy>=1.26",
+    "typer>=0.12",
+]
+
+[project.optional-dependencies]
+cli = [
+    "rich>=13",
+]
+web = [
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.27",
+    "sse-starlette>=2.0",
+]
+dev = [
+    "pytest>=8.0",
+    "pytest-mock>=3.12",
+    "mypy>=1.8",
+    "ruff>=0.4",
+    "black>=24.0",
+    "rich>=13",
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.27",
+    "sse-starlette>=2.0",
+    "httpx>=0.27",
+]
+
+[project.scripts]
+chess-vol = "chess_vol.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+chess_vol = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "integration: tests that require a real Stockfish binary (skipped if not available).",
+]
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+files = ["src/chess_vol"]
+warn_unused_ignores = true
+warn_redundant_casts = true
+
+[[tool.mypy.overrides]]
+module = ["chess", "chess.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["sse_starlette", "sse_starlette.*", "uvicorn", "uvicorn.*"]
+ignore_missing_imports = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "N", "RUF"]
+ignore = ["E501"]
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]

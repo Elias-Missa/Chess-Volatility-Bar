@@ -1,0 +1,2 @@
+[console_scripts]
+chess-vol = chess_vol.cli:app

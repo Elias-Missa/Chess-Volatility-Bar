@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Chess Volatility Bar — Sharpness Analysis</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><path d='M9 26h14v3H9zm1.5-3 1-3h9l1 3zM12 18c-2-3 1-6 3-7l-1-3 3-1v3c3 1 6 3 6 8v2H12z' fill='%2339ff14'/></svg>" />
+  <link rel="stylesheet" href="/vendor/css/chessboard.min.css" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+
+  <div id="bootError" class="boot-error hidden" role="alert"></div>
+
+  <!-- ── Header ──────────────────────────────────────────────────────────── -->
+  <header class="app-header">
+    <h1 class="app-title">Chess Volatility Bar</h1>
+    <p class="app-sub">Position sharpness · Stockfish</p>
+  </header>
+
+  <!-- ── Main layout ─────────────────────────────────────────────────────── -->
+  <main class="app">
+
+    <!-- Tab bar -->
+    <nav class="tab-bar" role="tablist" aria-label="Mode">
+      <button class="tab active" role="tab" data-tab="editor" aria-selected="true">Position Editor</button>
+      <button class="tab" role="tab" data-tab="game" aria-selected="false">Game Analyzer</button>
+    </nav>
+
+    <!-- ── Board + side panel row ────────────────────────────────────────── -->
+    <div class="board-row">
+
+      <div class="board-wrap">
+
+        <!-- Black player row -->
+        <div class="player-strip">
+          <span class="piece-dot dark"></span>
+          <span class="player-label">Black</span>
+        </div>
+
+        <div class="board-stage">
+
+          <div class="sidebar-bar" title="Engine evaluation — positive = White advantage">
+            <div class="bar-tag">Eval</div>
+            <div id="evalBar" class="eval-bar">
+              <div class="eval-dark-fill"></div>
+              <div class="eval-midline"></div>
+            </div>
+            <div id="evalLabel" class="bar-readout">—</div>
+          </div>
+
+          <div class="board-frame">
+            <div id="board"></div>
+          </div>
+
+          <div class="sidebar-bar" title="Volatility — how punishing the wrong move is">
+            <div class="bar-tag">Vol</div>
+            <div id="volBar" class="vol-bar" data-color="low" data-decided="false">
+              <div class="vol-fill"></div>
+              <div class="vol-split-line"></div>
+            </div>
+            <div id="volLabel" class="bar-readout">—</div>
+          </div>
+
+        </div>
+
+        <!-- White player row -->
+        <div class="player-strip">
+          <span class="piece-dot light"></span>
+          <span class="player-label">White</span>
+        </div>
+      </div>
+
+      <!-- ── Editor side panel ───────────────────────────────────────────── -->
+      <aside class="side-panel" data-for="editor">
+        <div class="panel-title">Position</div>
+
+        <div class="btn-grid">
+          <button id="btnStart" class="btn">Starting pos</button>
+          <button id="btnFlip"  class="btn">Flip board</button>
+          <button id="btnClear" class="btn">Clear</button>
+        </div>
+
+        <button id="btnAnalyzeFen" class="btn btn-primary btn-block">Analyze</button>
+
+        <div class="panel-divider"></div>
+
+        <div class="fen-block">
+          <span class="micro-label">FEN</span>
+          <div class="fen-input-row">
+            <input
+              id="fenInput"
+              type="text"
+              class="fen-input"
+              spellcheck="false"
+              value="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+              aria-label="FEN string"
+            />
+            <button id="copyFen" class="icon-btn" title="Copy FEN to clipboard">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="5.5" y="5.5" width="9" height="9" rx="1.5"/>
+                <path d="M3.5 10.5H2.5a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v1"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <label class="toggle">
+          <input id="deepToggle" type="checkbox" />
+          <span class="toggle-track"><span class="toggle-knob"></span></span>
+          <span class="toggle-label">Deep analysis</span>
+        </label>
+
+        <input id="autoAnalyze" type="checkbox" checked hidden />
+
+        <div class="panel-status">
+          <span id="editorStatus" class="status"></span>
+        </div>
+      </aside>
+
+      <!-- ── Game side panel ─────────────────────────────────────────────── -->
+      <aside class="side-panel hidden" data-for="game">
+        <div class="panel-title">Game</div>
+
+        <label class="file-pick btn-block">
+          <input id="pgnFile" type="file" accept=".pgn,text/plain" />
+          <span>Open file</span>
+        </label>
+
+        <button id="btnLoadPgn" class="btn btn-block">Load PGN</button>
+
+        <div class="btn-grid btn-grid-2">
+          <button id="btnAnalyzePgn" class="btn btn-primary">Analyze</button>
+          <button id="btnStopPgn"    class="btn btn-stop" disabled>Stop</button>
+        </div>
+
+        <div class="panel-divider"></div>
+
+        <label class="toggle">
+          <!-- Shared state with #deepToggle via JS -->
+          <input id="deepToggleGame" type="checkbox" />
+          <span class="toggle-track"><span class="toggle-knob"></span></span>
+          <span class="toggle-label">Deep analysis</span>
+        </label>
+
+        <div class="panel-status">
+          <span id="gameStatus" class="status"></span>
+          <span id="plyStatus"  class="status dim"></span>
+        </div>
+      </aside>
+
+    </div><!-- /.board-row -->
+
+    <!-- ── PGN textarea (game tab only) ──────────────────────────────────── -->
+    <section class="pgn-row hidden" data-for="game">
+      <textarea
+        id="pgnInput"
+        class="pgn-input"
+        rows="4"
+        spellcheck="false"
+        placeholder="Paste a PGN here, or use Open file above…"
+      ></textarea>
+    </section>
+
+    <!-- ── Game panel (chart + move list, game tab only) ─────────────────── -->
+    <section class="game-panel hidden" data-for="game">
+      <div id="chartWrap" class="chart-wrap hidden">
+        <canvas id="chart"></canvas>
+      </div>
+      <div id="moveListWrap" class="move-list-wrap hidden">
+        <div id="moveList"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="footer">
+    <span>No data leaves your machine.</span>
+    <span>Engine: Stockfish via python-chess.</span>
+  </footer>
+
+  <script src="/vendor/js/jquery.min.js"></script>
+  <script src="/vendor/js/chessboard.min.js"></script>
+  <script src="/vendor/js/chess.js"></script>
+  <script src="/vendor/js/chart.umd.min.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>
