@@ -39,6 +39,8 @@
   const btnAnalyzeFen = $("#btnAnalyzeFen");
   const autoAnalyze   = $("#autoAnalyze");
   const editorStatus  = $("#editorStatus");
+  const turnWhiteBtn  = $("#turnWhite");
+  const turnBlackBtn  = $("#turnBlack");
 
   const pgnFileInput  = $("#pgnFile");
   const pgnInput      = $("#pgnInput");
@@ -115,6 +117,7 @@
     const fen = assembleFen();
     fenInput.value = fen;
     editorStatus.textContent = validateFen(fen) ? "" : "⚠ Incomplete or illegal position";
+    syncTurnToggleFromFen();
   }
 
   function syncBoardFromFen(fen) {
@@ -128,6 +131,48 @@
   function validateFen(fen) {
     try { const g = new Chess(); return g.load(fen); } catch (_) { return false; }
   }
+
+  function getTurn() {
+    const parts = (fenInput.value || "").trim().split(/\s+/);
+    return parts[1] === "b" ? "b" : "w";
+  }
+
+  function setTurn(color) {
+    const next = color === "b" ? "b" : "w";
+    const parts = (fenInput.value || "").trim().split(/\s+/);
+    const tail = DEFAULT_FEN_TAIL.split(/\s+/);
+    const placement = parts[0] || board.fen();
+    const castling  = parts[2] ?? tail[1];
+    const ep        = parts[3] ?? tail[2];
+    const halfmove  = parts[4] ?? tail[3];
+    const fullmove  = parts[5] ?? tail[4];
+    fenInput.value = `${placement} ${next} ${castling} ${ep} ${halfmove} ${fullmove}`;
+    editorStatus.textContent = validateFen(fenInput.value) ? "" : "⚠ Incomplete or illegal position";
+  }
+
+  function syncTurnToggleFromFen() {
+    const turn = getTurn();
+    if (turnWhiteBtn) {
+      const white = turn === "w";
+      turnWhiteBtn.classList.toggle("active", white);
+      turnWhiteBtn.setAttribute("aria-checked", white ? "true" : "false");
+    }
+    if (turnBlackBtn) {
+      const black = turn === "b";
+      turnBlackBtn.classList.toggle("active", black);
+      turnBlackBtn.setAttribute("aria-checked", black ? "true" : "false");
+    }
+  }
+
+  function onTurnBtnClick(color) {
+    if (getTurn() === color) return;
+    setTurn(color);
+    syncTurnToggleFromFen();
+    scheduleAutoAnalyze();
+  }
+
+  if (turnWhiteBtn) turnWhiteBtn.addEventListener("click", () => onTurnBtnClick("w"));
+  if (turnBlackBtn) turnBlackBtn.addEventListener("click", () => onTurnBtnClick("b"));
 
   // ── Auto-analyze (debounced) ─────────────────────────────────────────── //
   let autoTimer = null;
@@ -148,6 +193,7 @@
   btnStart.addEventListener("click", () => {
     syncBoardFromFen(STARTING_FEN);
     fenInput.value = STARTING_FEN;
+    syncTurnToggleFromFen();
     scheduleAutoAnalyze();
   });
 
@@ -171,9 +217,11 @@
     const fen = fenInput.value.trim();
     if (validateFen(fen)) {
       syncBoardFromFen(fen);
+      syncTurnToggleFromFen();
       editorStatus.textContent = "";
       scheduleAutoAnalyze();
     } else {
+      syncTurnToggleFromFen();
       editorStatus.textContent = "Invalid FEN.";
     }
   });
@@ -391,6 +439,7 @@
     finally { suppressSync = false; }
 
     fenInput.value = entry.fen_after;
+    syncTurnToggleFromFen();
 
     const r = plyResults[idx];
     if (r) {
