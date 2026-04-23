@@ -114,18 +114,38 @@
   // ── Board ─────────────────────────────────────────────────────────────── //
   let suppressSync = false;
 
+  // Hoisted shared state for the analyze/invalidate helpers below. These are
+  // consumed by scheduleAutoAnalyze() and analyzeFen() later in the module.
+  let autoTimer   = null;
+  let inflightFen = null;
+
+  // Single source of truth for "the board changed; any pending or in-flight
+  // analysis is now stale". Cancels the debounce timer, aborts the current
+  // fetch (so a late response cannot overwrite the cleared UI), and wipes the
+  // engine-lines panel + the top-move arrow.
+  function invalidateAnalysis() {
+    if (autoTimer) {
+      clearTimeout(autoTimer);
+      autoTimer = null;
+    }
+    if (inflightFen) {
+      try { inflightFen.abort(); } catch (_) { /* ignore */ }
+      inflightFen = null;
+    }
+    setTopMove(null);
+    clearTopLinesLists();
+  }
+
   const board = Chessboard("board", {
     draggable:    true,
     sparePieces:  true,
     dropOffBoard: "trash",
     position:     "start",
     pieceTheme:   "/vendor/img/pieces/{piece}.png",
-    onDrop: (source, target) => {
-      if (suppressSync) return;
-      if (source === "spare" || target === "offboard" || source === target) return;
-      const current = getTurn();
-      setTurn(current === "w" ? "b" : "w");
-    },
+    // NOTE: we intentionally do NOT auto-flip the side-to-move on drop. The
+    // explicit White/Black segmented control owns turn state. Auto-flipping
+    // conflated "set up pieces" with "play a move" and was a frequent source
+    // of the engine being fed a position that disagrees with the board.
     onChange: () => {
       if (suppressSync) return;
       syncFenFromBoard();
@@ -138,10 +158,47 @@
     refreshArrow();
   });
 
+  // Expand a FEN rank (e.g. "r3k2r" or "4P3") into an 8-char string where
+  // empty squares are "." This lets us index the rank by file (a=0…h=7).
+  function expandRank(r) {
+    let out = "";
+    for (const ch of r) {
+      if (ch >= "1" && ch <= "8") out += ".".repeat(ch.charCodeAt(0) - 48);
+      else out += ch;
+    }
+    return out.padEnd(8, ".").slice(0, 8);
+  }
+
+  // Recompute castling rights from the current placement. A right survives
+  // only if the king and the relevant rook are still on their home squares.
+  // Any board edit that moves either piece cancels the matching right.
+  function computeCastling(placement) {
+    const ranks = placement.split("/");
+    if (ranks.length !== 8) return "-";
+    const rank1 = expandRank(ranks[7]);
+    const rank8 = expandRank(ranks[0]);
+    const whiteKingHome = rank1[4] === "K";
+    const blackKingHome = rank8[4] === "k";
+    let rights = "";
+    if (whiteKingHome && rank1[7] === "R") rights += "K";
+    if (whiteKingHome && rank1[0] === "R") rights += "Q";
+    if (blackKingHome && rank8[7] === "r") rights += "k";
+    if (blackKingHome && rank8[0] === "r") rights += "q";
+    return rights || "-";
+  }
+
+  // Produce a fresh, self-consistent FEN from (placement on the board) +
+  // (side-to-move from the previous FEN). We deliberately drop the inherited
+  // en-passant square (any edit invalidates it) and reset the halfmove clock
+  // to 0. Castling rights are recomputed from placement. This is the only
+  // place the UI hands a FEN to the backend.
   function assembleFen() {
     const parts = (fenInput.value || "").trim().split(/\s+/);
-    const tail = parts.length > 1 ? parts.slice(1).join(" ") : DEFAULT_FEN_TAIL;
-    return `${board.fen()} ${tail}`;
+    const placement = board.fen();
+    const turn = parts[1] === "b" ? "b" : "w";
+    const castling = computeCastling(placement);
+    const fullmove = Math.max(1, parseInt(parts[5], 10) || 1);
+    return `${placement} ${turn} ${castling} - 0 ${fullmove}`;
   }
 
   function syncFenFromBoard() {
@@ -149,8 +206,7 @@
     fenInput.value = fen;
     editorStatus.textContent = validateFen(fen) ? "" : "⚠ Incomplete or illegal position";
     syncTurnToggleFromFen();
-    setTopMove(null);
-    clearTopLinesLists();
+    invalidateAnalysis();
   }
 
   function syncBoardFromFen(fen) {
@@ -159,6 +215,10 @@
       suppressSync = true;
       try { board.position(parts[0], false); } finally { suppressSync = false; }
     }
+    // suppressSync swallowed onChange, so the shared cleanup path didn't run.
+    // Do it explicitly — otherwise a FEN-paste edit leaves stale engine lines
+    // and arrows on the screen until the next re-analysis lands.
+    invalidateAnalysis();
   }
 
   function validateFen(fen) {
@@ -173,14 +233,13 @@
   function setTurn(color) {
     const next = color === "b" ? "b" : "w";
     const parts = (fenInput.value || "").trim().split(/\s+/);
-    const tail = DEFAULT_FEN_TAIL.split(/\s+/);
     const placement = parts[0] || board.fen();
-    const castling  = parts[2] ?? tail[1];
-    const ep        = parts[3] ?? tail[2];
-    const halfmove  = parts[4] ?? tail[3];
-    const fullmove  = parts[5] ?? tail[4];
-    fenInput.value = `${placement} ${next} ${castling} ${ep} ${halfmove} ${fullmove}`;
+    const castling = computeCastling(placement);
+    const fullmove = Math.max(1, parseInt(parts[5], 10) || 1);
+    fenInput.value = `${placement} ${next} ${castling} - 0 ${fullmove}`;
     editorStatus.textContent = validateFen(fenInput.value) ? "" : "⚠ Incomplete or illegal position";
+    // Any side-to-move change makes a prior analysis stale by definition.
+    invalidateAnalysis();
   }
 
   function syncTurnToggleFromFen() {
@@ -208,7 +267,8 @@
   if (turnBlackBtn) turnBlackBtn.addEventListener("click", () => onTurnBtnClick("b"));
 
   // ── Auto-analyze (debounced) ─────────────────────────────────────────── //
-  let autoTimer = null;
+  // `autoTimer` is declared near the top of the module alongside
+  // `inflightFen` so that `invalidateAnalysis()` can own both.
 
   function scheduleAutoAnalyze() {
     if (!autoAnalyze || !autoAnalyze.checked) return;
@@ -227,6 +287,7 @@
     syncBoardFromFen(STARTING_FEN);
     fenInput.value = STARTING_FEN;
     syncTurnToggleFromFen();
+    invalidateAnalysis();
     scheduleAutoAnalyze();
   });
 
@@ -479,10 +540,12 @@
   }
 
   // ── Analyze FEN ──────────────────────────────────────────────────────── //
-  let inflightFen = null;
+  // `inflightFen` is hoisted near the top so invalidateAnalysis() can abort it.
 
   async function analyzeFen(fen) {
-    if (inflightFen) inflightFen.abort();
+    if (inflightFen) {
+      try { inflightFen.abort(); } catch (_) { /* ignore */ }
+    }
     const ctrl = new AbortController();
     inflightFen = ctrl;
     editorStatus.textContent = "Analyzing…";
@@ -497,6 +560,11 @@
       });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${await resp.text()}`);
       const data = await resp.json();
+      // Stale-response guard: if the user edited the board (or a newer
+      // analysis started) while this request was in flight, our controller
+      // was replaced in inflightFen and/or aborted. Do not let this response
+      // overwrite the cleared UI with lines that belong to an older FEN.
+      if (ctrl !== inflightFen || ctrl.signal.aborted) return;
       const turn = fen.trim().split(/\s+/)[1] || "w";
       renderEvalBar(data.volatility.best_eval_cp, turn);
       renderVolBar(data.volatility);
