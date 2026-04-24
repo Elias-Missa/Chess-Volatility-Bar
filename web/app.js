@@ -158,6 +158,34 @@
     refreshArrow();
   });
 
+  // Chess.com-style keyboard navigation through PGN plies. Runs on the game
+  // tab only and yields to any text input so PGN/FEN paste & edit still work.
+  window.addEventListener("keydown", (e) => {
+    if (!loadedPlies.length) return;
+
+    const gameTabActive = document
+      .querySelector(".tab[data-tab='game']")
+      ?.classList.contains("active");
+    if (!gameTabActive) return;
+
+    const t = e.target;
+    const tag = t && t.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA" || (t && t.isContentEditable)) return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+    const last = loadedPlies.length - 1;
+    let next = null;
+    switch (e.key) {
+      case "ArrowRight": next = Math.min(last, (currentPlyIdx < 0 ? -1 : currentPlyIdx) + 1); break;
+      case "ArrowLeft":  next = Math.max(0,    (currentPlyIdx < 0 ?  1 : currentPlyIdx) - 1); break;
+      case "Home":       next = 0; break;
+      case "End":        next = last; break;
+      default: return;
+    }
+    e.preventDefault();
+    if (next !== currentPlyIdx) jumpToPly(next);
+  });
+
   // Expand a FEN rank (e.g. "r3k2r" or "4P3") into an 8-char string where
   // empty squares are "." This lets us index the rank by file (a=0…h=7).
   function expandRank(r) {
@@ -588,12 +616,14 @@
   // ── PGN / Game ───────────────────────────────────────────────────────── //
   let loadedPlies   = [];
   let plyResults    = [];
+  let currentPlyIdx = -1;
   let chart         = null;
   let pgnController = null;
 
   function resetGame() {
     loadedPlies = [];
     plyResults  = [];
+    currentPlyIdx = -1;
     moveListEl.innerHTML = "";
     gameStatus.textContent  = "";
     plyStatus.textContent   = "";
@@ -686,6 +716,7 @@
 
   function jumpToPly(idx) {
     if (idx < 0 || idx >= loadedPlies.length) return;
+    currentPlyIdx = idx;
     const entry = loadedPlies[idx];
 
     suppressSync = true;
