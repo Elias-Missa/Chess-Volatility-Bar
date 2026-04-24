@@ -47,6 +47,7 @@
   const btnLoadPgn    = $("#btnLoadPgn");
   const btnAnalyzePgn = $("#btnAnalyzePgn");
   const btnStopPgn    = $("#btnStopPgn");
+  const btnFlipGame   = $("#btnFlipGame");
   const gameStatus    = $("#gameStatus");
   const plyStatus     = $("#plyStatus");
   const moveListEl    = $("#moveList");
@@ -331,6 +332,13 @@
     board.flip();
     setTimeout(refreshArrow, 0);
   });
+
+  if (btnFlipGame) {
+    btnFlipGame.addEventListener("click", () => {
+      board.flip();
+      setTimeout(refreshArrow, 0);
+    });
+  }
 
   btnAnalyzeFen.addEventListener("click", () => {
     const fen = fenInput.value.trim();
@@ -744,7 +752,19 @@
     );
 
     const active = moveListEl.querySelector(".move-cell.active");
-    if (active) active.scrollIntoView({ block: "nearest" });
+    if (active && moveListWrap && moveListWrap.contains(active)) {
+      // Scroll only within the move-list's own container (.move-list-wrap is
+      // overflow-y:auto with max-height). Using scrollIntoView() would also
+      // scroll the window, which pushes the board off-screen when arrow-keying
+      // through a game.
+      const cRect = moveListWrap.getBoundingClientRect();
+      const aRect = active.getBoundingClientRect();
+      if (aRect.top < cRect.top) {
+        moveListWrap.scrollTop += aRect.top - cRect.top;
+      } else if (aRect.bottom > cRect.bottom) {
+        moveListWrap.scrollTop += aRect.bottom - cRect.bottom;
+      }
+    }
 
     if (chart) {
       chart.data.datasets.forEach((ds) => {
