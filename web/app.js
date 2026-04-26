@@ -54,9 +54,15 @@
   const chartWrap     = $("#chartWrap");
   const moveListWrap  = $("#moveListWrap");
   const chartCanvas   = $("#chart");
+  const gameStatsEl   = $("#gameStats");
+  const statWhiteAcc  = $("#statWhiteAcc");
+  const statBlackAcc  = $("#statBlackAcc");
+  const statAvgVol    = $("#statAvgVol");
 
   const arrowToggle      = $("#arrowToggle");
   const arrowToggleGame  = $("#arrowToggleGame");
+  const soundsToggle       = $("#soundsToggle");
+  const soundsToggleEditor = $("#soundsToggleEditor");
   const arrowLayer       = $("#arrowLayer");
   const topLinesList     = $("#topLinesList");
   const topLinesListGame = $("#topLinesListGame");
@@ -74,16 +80,82 @@
       const match = el.dataset.for === name;
       el.classList.toggle("hidden", !match);
     });
+    // The main board row has no [data-for] because it is shared between the
+    // editor and game tabs. The About tab replaces it entirely with its own
+    // panel, so hide it there and restore it otherwise.
+    const boardRow = document.querySelector(".board-row");
+    if (boardRow) boardRow.classList.toggle("hidden", name === "about");
     // Re-show conditional children inside game-panel only if they have data
     if (name === "game") {
       if (loadedPlies && loadedPlies.length) moveListWrap.classList.remove("hidden");
       if (chart) chartWrap.classList.remove("hidden");
+      if (gameStatsEl && plyResults.some(Boolean)) gameStatsEl.classList.remove("hidden");
     }
+    if (name === "about") ensureAboutDemos();
   }
 
   document.querySelectorAll(".tab").forEach((btn) => {
     btn.addEventListener("click", () => setTab(btn.dataset.tab));
   });
+
+  // ── About tab demos (lazy-init) ───────────────────────────────────────── //
+  // The two mini-boards on the Why tab are static examples. We build them the
+  // first time the user visits the tab so chessboard.js sees a non-zero width
+  // container (it measures on init). Values are hardcoded — no backend call.
+  let aboutDemosReady = false;
+
+  const DEMO_DRY_FEN   = "4k3/p2p1p1p/1p1b1p2/8/8/1P1B1P2/P2P1P1P/4K3 w - - 0 1";
+  // Qxg7+!! Kxg7 is stalemate. Any other White move loses to ...Qxg2#
+  // (black queen on g2 supported by bishop on b7 along the long diagonal).
+  const DEMO_SHARP_FEN = "2r2rk1/pb1n2pp/8/4Q3/8/7q/5bPP/7K w - - 0 1";
+
+  function paintEvalInto(barEl, labelEl, cpWhite) {
+    if (!barEl || !labelEl) return;
+    barEl.style.setProperty("--fill", evalCpToFill(cpWhite));
+    if (cpWhite === 0) {
+      labelEl.textContent = "0.00";
+    } else {
+      const sign = cpWhite > 0 ? "+" : "−";
+      labelEl.textContent = sign + (Math.abs(cpWhite) / 100).toFixed(2);
+    }
+  }
+
+  function paintVolInto(barEl, labelEl, score) {
+    if (!barEl || !labelEl) return;
+    const fill = Math.max(0, Math.min(1, score / 100));
+    barEl.style.setProperty("--fill", fill);
+    barEl.style.setProperty("--local", 0);
+    barEl.style.setProperty("--split-visible", 0);
+    barEl.dataset.color = scoreToColor(score);
+    barEl.dataset.decided = "false";
+    labelEl.textContent = score.toFixed(1);
+  }
+
+  function paintDemoBars() {
+    paintEvalInto($("#demoEvalA"), $("#demoEvalLabelA"), 0);
+    paintVolInto ($("#demoVolA"),  $("#demoVolLabelA"),  4);
+    paintEvalInto($("#demoEvalB"), $("#demoEvalLabelB"), 0);
+    paintVolInto ($("#demoVolB"),  $("#demoVolLabelB"),  88);
+  }
+
+  function ensureAboutDemos() {
+    if (aboutDemosReady) return;
+    if (!document.getElementById("demoBoardA") || !document.getElementById("demoBoardB")) return;
+    aboutDemosReady = true;
+    Chessboard("demoBoardA", {
+      position: DEMO_DRY_FEN.split(" ")[0],
+      draggable: false,
+      showNotation: false,
+      pieceTheme: "/vendor/img/pieces/{piece}.png",
+    });
+    Chessboard("demoBoardB", {
+      position: DEMO_SHARP_FEN.split(" ")[0],
+      draggable: false,
+      showNotation: false,
+      pieceTheme: "/vendor/img/pieces/{piece}.png",
+    });
+    paintDemoBars();
+  }
 
   // ── Shared deep toggle state ──────────────────────────────────────────── //
   function syncDeep(source) {
@@ -110,6 +182,173 @@
 
   function arrowEnabled() {
     return !!(arrowToggle && arrowToggle.checked);
+  }
+
+  // ── Sound effects ─────────────────────────────────────────────────────── //
+  // Sounds are synthesised on the fly via the Web Audio API so we don't have
+  // to ship any audio binaries. The AudioContext is created lazily and resumed
+  // on the first user gesture (browsers block autoplay otherwise).
+  let audioCtx = null;
+  function getAudioCtx() {
+    if (audioCtx) return audioCtx;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    try { audioCtx = new AC(); } catch (_) { audioCtx = null; }
+    return audioCtx;
+  }
+  function ensureAudioResume() {
+    const ctx = getAudioCtx();
+    if (ctx && ctx.state === "suspended") {
+      ctx.resume().catch(() => {});
+    }
+  }
+  // Kick the autoplay gate on the very first interaction anywhere on the page.
+  ["click", "keydown", "touchstart"].forEach((evt) =>
+    window.addEventListener(evt, ensureAudioResume, { once: true, passive: true })
+  );
+
+  function soundsEnabled() {
+    return !!(soundsToggle && soundsToggle.checked);
+  }
+
+  function syncSounds(source) {
+    const val = source.checked;
+    if (soundsToggle && soundsToggle !== source) soundsToggle.checked = val;
+    if (soundsToggleEditor && soundsToggleEditor !== source) soundsToggleEditor.checked = val;
+  }
+  if (soundsToggle)       soundsToggle.addEventListener("change",       () => syncSounds(soundsToggle));
+  if (soundsToggleEditor) soundsToggleEditor.addEventListener("change", () => syncSounds(soundsToggleEditor));
+
+  // Master bus — gives us a single output gain we can tame globally and a
+  // gentle high-pass to keep low-end resonances from feeling boomy.
+  let masterBus = null;
+  function getBus() {
+    const ctx = getAudioCtx();
+    if (!ctx) return null;
+    if (masterBus) return masterBus;
+    const g = ctx.createGain();
+    g.gain.value = 0.85;
+    const hp = ctx.createBiquadFilter();
+    hp.type = "highpass";
+    hp.frequency.value = 60;
+    g.connect(hp).connect(ctx.destination);
+    masterBus = g;
+    return masterBus;
+  }
+
+  // Single modal partial — a short sine that swells in and decays out, like
+  // a struck wooden body resonating at one frequency. Combining several of
+  // these (modal synthesis) produces a much more "real" wood click than a
+  // single oscillator can.
+  function playPartial(freq, peakGain, decay, startAt = 0, type = "sine") {
+    const ctx = getAudioCtx();
+    const bus = getBus();
+    if (!ctx || !bus) return;
+    const now = ctx.currentTime + startAt;
+    const osc = ctx.createOscillator();
+    const g   = ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, now);
+    g.gain.setValueAtTime(0.0001, now);
+    g.gain.exponentialRampToValueAtTime(peakGain, now + 0.003);
+    g.gain.exponentialRampToValueAtTime(0.0001,   now + decay);
+    osc.connect(g).connect(bus);
+    osc.start(now);
+    osc.stop(now + decay + 0.02);
+  }
+
+  // Brief band-passed noise burst — the "transient" portion of a hit, the
+  // attack you hear before the resonances ring out. Q controls how tonal vs
+  // hissy it sounds; lower Q = more click-like.
+  function playNoise({ duration, centerFreq, Q = 4, gain = 0.2, startAt = 0 }) {
+    const ctx = getAudioCtx();
+    const bus = getBus();
+    if (!ctx || !bus) return;
+    const now = ctx.currentTime + startAt;
+    const size = Math.max(1, Math.floor(ctx.sampleRate * duration));
+    const buf  = ctx.createBuffer(1, size, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < size; i++) {
+      // Sharp attack envelope inside the buffer — grows and fades fast.
+      const t = i / size;
+      const env = Math.pow(1 - t, 1.4);
+      data[i] = (Math.random() * 2 - 1) * env;
+    }
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const bp = ctx.createBiquadFilter();
+    bp.type = "bandpass";
+    bp.frequency.value = centerFreq;
+    bp.Q.value = Q;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(gain, now);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+    src.connect(bp).connect(g).connect(bus);
+    src.start(now);
+    src.stop(now + duration + 0.02);
+  }
+
+  // Wooden click — the canonical chess.com "tock". Snappy noise transient
+  // plus three modal partials forming a wooden body: low body, mid grain,
+  // high snap. Keeps total energy short (~140ms) so it doesn't feel sluggish.
+  function soundMove() {
+    playNoise  ({ duration: 0.020, centerFreq: 2400, Q: 0.9, gain: 0.16 });
+    playNoise  ({ duration: 0.040, centerFreq:  900, Q: 1.4, gain: 0.10 });
+    playPartial(150, 0.16, 0.090);
+    playPartial(420, 0.10, 0.080);
+    playPartial(880, 0.06, 0.050);
+  }
+
+  // Heavier, lower-pitched relative of the move sound — think "thunk" instead
+  // of "tock". Adds a sub-bass thump and a slightly grittier transient.
+  function soundCapture() {
+    playNoise  ({ duration: 0.030, centerFreq: 1800, Q: 0.8, gain: 0.18 });
+    playNoise  ({ duration: 0.060, centerFreq:  450, Q: 1.0, gain: 0.22, startAt: 0.005 });
+    playPartial( 90, 0.22, 0.140);
+    playPartial(220, 0.16, 0.110);
+    playPartial(560, 0.08, 0.060);
+    playPartial(1100, 0.04, 0.040);
+  }
+
+  // Bright two-note alert — the upward perfect-fifth lift signals "watch
+  // out" without crossing into doorbell territory. Triangle adds warmth.
+  function soundCheck() {
+    playPartial(880,  0.18, 0.220, 0.000, "triangle");
+    playPartial(1320, 0.10, 0.260, 0.000, "sine");
+    playPartial(1320, 0.16, 0.220, 0.110, "triangle");
+    playPartial(1980, 0.08, 0.260, 0.110, "sine");
+  }
+
+  // Final, dramatic descent — three slowing notes ending on a low boom.
+  // Modeled after a "game over" cadence; longer than other sounds because
+  // it's a terminal event the user will only hear once per game.
+  function soundCheckmate() {
+    playPartial(660, 0.20, 0.30, 0.00, "triangle");
+    playPartial(990, 0.10, 0.30, 0.00, "sine");
+    playPartial(523, 0.20, 0.32, 0.18, "triangle");
+    playPartial(784, 0.10, 0.32, 0.18, "sine");
+    playPartial(330, 0.24, 0.55, 0.40, "triangle");
+    playPartial(165, 0.30, 0.70, 0.40, "sine");
+    playNoise  ({ duration: 0.25, centerFreq: 110, Q: 2, gain: 0.20, startAt: 0.40 });
+  }
+
+  function classifyMove(san) {
+    if (!san) return "move";
+    if (san.endsWith("#")) return "checkmate";
+    if (san.endsWith("+")) return "check";
+    if (san.includes("x")) return "capture";
+    return "move";
+  }
+
+  function playMoveSound(san) {
+    if (!soundsEnabled()) return;
+    ensureAudioResume();
+    switch (classifyMove(san)) {
+      case "checkmate": soundCheckmate(); break;
+      case "check":     soundCheck();     break;
+      case "capture":   soundCapture();   break;
+      default:          soundMove();      break;
+    }
   }
 
   // ── Board ─────────────────────────────────────────────────────────────── //
@@ -151,6 +390,21 @@
       if (suppressSync) return;
       syncFenFromBoard();
       scheduleAutoAnalyze();
+    },
+    // Sound feedback on direct piece drags. Only fires for square→square
+    // movement (skips spare-piece placements and trash-drops, since those
+    // are setup actions, not "moves"). Using oldPos lets us distinguish a
+    // capture (target was occupied by a different piece) from a quiet move.
+    onDrop: (source, target, piece, _newPos, oldPos) => {
+      if (!soundsEnabled())              return;
+      if (suppressSync)                  return;  // programmatic position set
+      if (source === "spare")            return;  // dragged from spare tray
+      if (target === "offboard" || target === "trash") return;
+      if (source === target)             return;  // snap-back (illegal/no-op)
+      ensureAudioResume();
+      const captured = oldPos && oldPos[target] && oldPos[target] !== piece;
+      if (captured) soundCapture();
+      else          soundMove();
     },
   });
 
@@ -637,9 +891,91 @@
     plyStatus.textContent   = "";
     chartWrap.classList.add("hidden");
     moveListWrap.classList.add("hidden");
+    if (gameStatsEl) gameStatsEl.classList.add("hidden");
+    resetGameStats();
     clearTopLinesLists();
     setTopMove(null);
     destroyChart();
+  }
+
+  // ── Game stats (accuracy + avg volatility) ───────────────────────────── //
+  // Chess.com-style accuracy: convert centipawn eval to a "win percentage"
+  // via a logistic curve, then score each move by how much win% the player
+  // gave up. The exponential mapping is the same one chess.com publishes:
+  // small drops barely dent accuracy, while large blunders fall off fast.
+  function winPercent(cpWhite) {
+    return 50 + 50 * (2 / (1 + Math.exp(-0.00368208 * cpWhite)) - 1);
+  }
+  function accuracyFromDrop(winBefore, winAfter) {
+    const drop = Math.max(0, winBefore - winAfter);
+    const acc  = 103.1668 * Math.exp(-0.04354 * drop) - 3.1669;
+    return Math.max(0, Math.min(100, acc));
+  }
+  function whiteCpFromPly(plyData) {
+    const turn = plyData.fen_before.split(/\s+/)[1] || "w";
+    return turn === "b" ? -plyData.eval_cp : plyData.eval_cp;
+  }
+
+  function resetGameStats() {
+    if (statWhiteAcc) statWhiteAcc.textContent = "—";
+    if (statBlackAcc) statBlackAcc.textContent = "—";
+    if (statAvgVol)   statAvgVol.textContent   = "—";
+    if (statAvgVol)   statAvgVol.removeAttribute("data-color");
+  }
+
+  // Recompute over whatever plies have streamed in so far. Cheap (just an
+  // array sweep) so we run it on every onPly tick — the panel updates live
+  // as analysis progresses instead of waiting for done.
+  function recomputeGameStats() {
+    if (!gameStatsEl) return;
+    const whiteAccs = [];
+    const blackAccs = [];
+    const volScores = [];
+
+    for (let i = 0; i < plyResults.length; i++) {
+      const cur = plyResults[i];
+      if (!cur || !cur.ply) continue;
+
+      const v = cur.ply.volatility;
+      if (v && typeof v.score === "number") volScores.push(v.score);
+
+      // Accuracy needs the eval AFTER the move, which is the eval BEFORE the
+      // next ply. Skip the final ply (no follow-up to measure against).
+      const next = plyResults[i + 1];
+      if (!next || !next.ply) continue;
+
+      const cpWhiteBefore = whiteCpFromPly(cur.ply);
+      const cpWhiteAfter  = whiteCpFromPly(next.ply);
+      const turn = cur.ply.fen_before.split(/\s+/)[1] || "w";
+
+      const winWBefore = winPercent(cpWhiteBefore);
+      const winWAfter  = winPercent(cpWhiteAfter);
+
+      if (turn === "w") {
+        whiteAccs.push(accuracyFromDrop(winWBefore, winWAfter));
+      } else {
+        // Black's win% is the mirror image — accuracy measures the drop
+        // from black's perspective.
+        blackAccs.push(accuracyFromDrop(100 - winWBefore, 100 - winWAfter));
+      }
+    }
+
+    const fmtPct = (arr) =>
+      arr.length ? `${(arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(1)}%` : "—";
+
+    statWhiteAcc.textContent = fmtPct(whiteAccs);
+    statBlackAcc.textContent = fmtPct(blackAccs);
+
+    if (volScores.length) {
+      const avg = volScores.reduce((a, b) => a + b, 0) / volScores.length;
+      statAvgVol.textContent = avg.toFixed(1);
+      statAvgVol.dataset.color = scoreToColor(avg);
+    } else {
+      statAvgVol.textContent = "—";
+      statAvgVol.removeAttribute("data-color");
+    }
+
+    gameStatsEl.classList.remove("hidden");
   }
 
   function destroyChart() {
@@ -724,6 +1060,7 @@
 
   function jumpToPly(idx) {
     if (idx < 0 || idx >= loadedPlies.length) return;
+    const prevIdx = currentPlyIdx;
     currentPlyIdx = idx;
     const entry = loadedPlies[idx];
 
@@ -772,6 +1109,13 @@
         ds.pointHoverRadius = ds.data.map((_, i) => (i === idx ? 7 : 4));
       });
       chart.update("none");
+    }
+
+    // The board now shows the position reached AFTER loadedPlies[idx-1] was
+    // played (jumpToPly displays fen_before of the current ply). Play the
+    // sound of that transition, not the move that's about to happen.
+    if (prevIdx !== idx && idx > 0) {
+      playMoveSound(loadedPlies[idx - 1].san);
     }
   }
 
@@ -898,6 +1242,7 @@
     plyStatus.textContent = `${p.done} / ${p.total} plies`;
     updateMoveVol(plyData.ply - 1, plyData.volatility.score);
     appendChartPoint(plyData);
+    recomputeGameStats();
     jumpToPly(plyData.ply - 1);
   }
 

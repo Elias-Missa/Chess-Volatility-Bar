@@ -25,6 +25,7 @@
     <nav class="tab-bar" role="tablist" aria-label="Mode">
       <button class="tab active" role="tab" data-tab="editor" aria-selected="true">Position Editor</button>
       <button class="tab" role="tab" data-tab="game" aria-selected="false">Game Analyzer</button>
+      <button class="tab" role="tab" data-tab="about" aria-selected="false">Why</button>
     </nav>
 
     <!-- ── Board + side panel row ────────────────────────────────────────── -->
@@ -132,6 +133,13 @@
           <span class="toggle-label">Auto-analyze on edit</span>
         </label>
 
+        <label class="toggle">
+          <!-- Shared state with #soundsToggle via JS -->
+          <input id="soundsToggleEditor" type="checkbox" checked />
+          <span class="toggle-track"><span class="toggle-knob"></span></span>
+          <span class="toggle-label">Sound effects</span>
+        </label>
+
         <div class="panel-divider"></div>
 
         <div class="top-lines">
@@ -186,6 +194,12 @@
           <span class="toggle-label">Show arrow</span>
         </label>
 
+        <label class="toggle">
+          <input id="soundsToggle" type="checkbox" checked />
+          <span class="toggle-track"><span class="toggle-knob"></span></span>
+          <span class="toggle-label">Sound effects</span>
+        </label>
+
         <div class="panel-divider"></div>
 
         <div class="top-lines">
@@ -203,12 +217,85 @@
 
     <!-- ── Game panel (chart + move list, game tab only) ─────────────────── -->
     <section class="game-panel hidden" data-for="game">
+      <div id="gameStats" class="game-stats hidden">
+        <div class="stat-card" data-side="white">
+          <div class="stat-label">White accuracy</div>
+          <div class="stat-value" id="statWhiteAcc">—</div>
+        </div>
+        <div class="stat-card" data-side="black">
+          <div class="stat-label">Black accuracy</div>
+          <div class="stat-value" id="statBlackAcc">—</div>
+        </div>
+        <div class="stat-card" data-side="vol">
+          <div class="stat-label">Avg volatility</div>
+          <div class="stat-value" id="statAvgVol">—</div>
+        </div>
+      </div>
       <div id="chartWrap" class="chart-wrap hidden">
         <canvas id="chart"></canvas>
       </div>
       <div id="moveListWrap" class="move-list-wrap hidden">
         <div id="moveList"></div>
       </div>
+    </section>
+
+    <!-- ── About panel (Why tab only) ────────────────────────────────────── -->
+    <section class="about-panel hidden" data-for="about">
+      <div class="about-prose">
+        <h2>Eval tells you who's winning. Volatility tells you how hard it is to play.</h2>
+        <p>Stockfish's eval ranks positions by best play. It can't see that one of two equally "equal" positions is a bone-dry handshake while the other is a single-move minefield. The volatility bar measures that difference: how punishing it is to choose the <em>wrong</em> move.</p>
+        <p>Below are two positions. Both evaluate to 0.00 — a dead draw. Watch what the volatility bar says.</p>
+      </div>
+
+      <div class="demo-row">
+        <article class="demo-card" data-demo="dry">
+          <h3>Dry draw — opposite-coloured bishops</h3>
+          <div class="demo-stage">
+            <div class="sidebar-bar mini">
+              <div class="bar-tag">Eval</div>
+              <div class="eval-bar mini" id="demoEvalA">
+                <div class="eval-dark-fill"></div>
+                <div class="eval-midline"></div>
+              </div>
+              <div class="bar-readout" id="demoEvalLabelA">—</div>
+            </div>
+            <div class="demo-board" id="demoBoardA"></div>
+            <div class="sidebar-bar mini">
+              <div class="bar-tag">Vol</div>
+              <div class="vol-bar mini" id="demoVolA" data-color="low" data-decided="false">
+                <div class="vol-fill"></div>
+              </div>
+              <div class="bar-readout" id="demoVolLabelA">—</div>
+            </div>
+          </div>
+          <p class="demo-caption">Opposite-coloured bishops, symmetric pawns. Nearly every reasonable move holds — the drawing margin is enormous. Low volatility means forgiving.</p>
+        </article>
+
+        <article class="demo-card" data-demo="sharp">
+          <h3>Sharp draw — the stalemate swindle</h3>
+          <div class="demo-stage">
+            <div class="sidebar-bar mini">
+              <div class="bar-tag">Eval</div>
+              <div class="eval-bar mini" id="demoEvalB">
+                <div class="eval-dark-fill"></div>
+                <div class="eval-midline"></div>
+              </div>
+              <div class="bar-readout" id="demoEvalLabelB">—</div>
+            </div>
+            <div class="demo-board" id="demoBoardB"></div>
+            <div class="sidebar-bar mini">
+              <div class="bar-tag">Vol</div>
+              <div class="vol-bar mini" id="demoVolB" data-color="high" data-decided="false">
+                <div class="vol-fill"></div>
+              </div>
+              <div class="bar-readout" id="demoVolLabelB">—</div>
+            </div>
+          </div>
+          <p class="demo-caption">White is down a queen, two bishops, a knight and a rook, and Black threatens <em>…Qxg2#</em> next move. The one and only move that holds is <em>Qxg7+!!</em> — after <em>Kxg7</em>, White is stalemated. Every other move loses on the spot. Same 0.00 eval — but every choice matters.</p>
+        </article>
+      </div>
+
+      <p class="about-takeaway">Green bar: the position plays itself. Red bar: you're walking on eggshells.</p>
     </section>
 
   </main>
