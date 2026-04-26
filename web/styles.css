@@ -941,6 +941,112 @@ button, input, textarea, select { font: inherit; color: inherit; }
   background: rgba(255,255,255,0.02);
 }
 
+/* ── Library ───────────────────────────────────────────────── */
+.library-panel {
+  width: min(1120px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.library-drop,
+.library-filters,
+.library-table-wrap,
+.library-progress {
+  background: var(--surface);
+  border: 1px solid var(--border-1);
+  border-radius: var(--r);
+  box-shadow: var(--s-sm), inset 0 1px 0 rgba(255,255,255,0.03);
+}
+
+.library-drop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px;
+  border-style: dashed;
+}
+.library-drop.drag-over {
+  border-color: var(--green);
+  box-shadow: 0 0 22px var(--green-glow);
+}
+.library-drop h2 {
+  margin-bottom: 4px;
+  font-size: 18px;
+}
+.library-drop p {
+  color: var(--fg-2);
+}
+
+.library-progress {
+  padding: 10px 12px;
+  color: var(--fg-2);
+}
+
+.library-filters {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 10px;
+  padding: 12px;
+}
+.library-filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.library-filters input,
+.library-filters select {
+  min-width: 0;
+  padding: 7px 8px;
+  background: var(--surface-1);
+  border: 1px solid var(--border-2);
+  border-radius: var(--r-xs);
+}
+
+.library-table-wrap {
+  overflow: auto;
+}
+.library-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 920px;
+}
+.library-table th,
+.library-table td {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  white-space: nowrap;
+}
+.library-table th {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--fg-3);
+  background: var(--surface-1);
+}
+.library-table tbody tr:hover {
+  background: rgba(255,255,255,0.03);
+}
+.library-empty {
+  color: var(--fg-3);
+  text-align: center !important;
+}
+.library-actions {
+  display: flex;
+  gap: 6px;
+}
+.library-actions .btn {
+  padding: 5px 8px;
+  font-size: 11px;
+}
+
+@media (max-width: 900px) {
+  .library-drop { flex-direction: column; align-items: stretch; }
+  .library-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
 /* ── Engine lines panel ─────────────────────────────────────── */
 .top-lines {
   display: flex;

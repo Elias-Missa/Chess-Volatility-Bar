@@ -25,6 +25,7 @@
     <nav class="tab-bar" role="tablist" aria-label="Mode">
       <button class="tab active" role="tab" data-tab="editor" aria-selected="true">Position Editor</button>
       <button class="tab" role="tab" data-tab="game" aria-selected="false">Game Analyzer</button>
+      <button class="tab" role="tab" data-tab="library" aria-selected="false">Library</button>
       <button class="tab" role="tab" data-tab="about" aria-selected="false">Why</button>
     </nav>
 
@@ -297,6 +298,84 @@
       </div>
     </section>
 
+    <!-- ── Library panel (saved local analyses) ──────────────────────────── -->
+    <section class="library-panel hidden" data-for="library">
+      <div class="library-drop" id="libraryDrop">
+        <div>
+          <h2>Saved Games Library</h2>
+          <p>Drop PGNs or ZIPs here, or choose files. Games are analyzed locally and stored in this browser.</p>
+        </div>
+        <label class="file-pick">
+          <input id="libraryFileInput" type="file" accept=".pgn,.zip,text/plain,application/zip" multiple />
+          <span>Import files</span>
+        </label>
+      </div>
+
+      <div id="libraryProgress" class="library-progress hidden"></div>
+
+      <div class="library-filters">
+        <label>
+          <span class="micro-label">From</span>
+          <input id="libraryDateFrom" type="date" />
+        </label>
+        <label>
+          <span class="micro-label">To</span>
+          <input id="libraryDateTo" type="date" />
+        </label>
+        <label>
+          <span class="micro-label">Opponent</span>
+          <input id="libraryOpponent" type="search" placeholder="Name" />
+        </label>
+        <label>
+          <span class="micro-label">Min avg V</span>
+          <input id="libraryMinV" type="number" min="0" max="100" step="1" placeholder="0" />
+        </label>
+        <label>
+          <span class="micro-label">Max avg V</span>
+          <input id="libraryMaxV" type="number" min="0" max="100" step="1" placeholder="100" />
+        </label>
+        <label>
+          <span class="micro-label">Class</span>
+          <select id="libraryClassKey">
+            <option value="">Any</option>
+            <option value="brilliant">Brilliant</option>
+            <option value="great">Great</option>
+            <option value="inaccuracy">Inaccuracy</option>
+            <option value="mistake">Mistake</option>
+            <option value="blunder">Blunder</option>
+            <option value="practical">Practical</option>
+            <option value="simplification">Simplification</option>
+          </select>
+        </label>
+        <label>
+          <span class="micro-label">Min count</span>
+          <input id="libraryClassMin" type="number" min="1" step="1" placeholder="1" />
+        </label>
+      </div>
+
+      <div class="library-table-wrap">
+        <table class="library-table">
+          <thead>
+            <tr>
+              <th>Date analyzed</th>
+              <th>White</th>
+              <th>Black</th>
+              <th>Result</th>
+              <th>Plies</th>
+              <th>Avg V</th>
+              <th>White acc</th>
+              <th>Black acc</th>
+              <th>Blunders</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="libraryTableBody">
+            <tr><td colspan="10" class="library-empty">No saved games yet.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
     <!-- ── About panel (Why tab only) ────────────────────────────────────── -->
     <section class="about-panel hidden" data-for="about">
       <div class="about-prose">
@@ -367,6 +446,9 @@
   <script src="/vendor/js/chessboard.min.js"></script>
   <script src="/vendor/js/chess.js"></script>
   <script src="/vendor/js/chart.umd.min.js"></script>
+  <script src="/vendor/js/idb.js"></script>
+  <script src="/vendor/js/jszip.min.js"></script>
+  <script src="/library.js"></script>
   <script src="/app.js"></script>
 </body>
 </html>

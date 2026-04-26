@@ -322,6 +322,10 @@ def create_app() -> FastAPI:
         def app_js() -> FileResponse:
             return FileResponse(web_dir / "app.js", media_type="application/javascript")
 
+        @app.get("/library.js", include_in_schema=False)
+        def library_js() -> FileResponse:
+            return FileResponse(web_dir / "library.js", media_type="application/javascript")
+
         @app.get("/styles.css", include_in_schema=False)
         def styles_css() -> FileResponse:
             return FileResponse(web_dir / "styles.css", media_type="text/css")

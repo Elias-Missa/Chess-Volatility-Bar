@@ -6,7 +6,21 @@
       "Bash(chess-vol serve *)",
       "Bash(curl -s http://127.0.0.1:8000/)",
       "Bash(curl -s http://127.0.0.1:8000/styles.css)",
-      "Bash(curl -s http://127.0.0.1:8000/app.js)"
+      "Bash(curl -s http://127.0.0.1:8000/app.js)",
+      "Bash(node --check \"C:\\\\Users\\\\eomis\\\\Downloads\\\\Chess Volatility BAR\\\\Chess-Volatility-Bar\\\\web\\\\app.js\")",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(python -m pytest tests/test_explain.py -x --no-header)",
+      "Bash(python -m pytest --no-header)",
+      "Bash(python -m mypy src/chess_vol/)",
+      "Bash(python -m ruff check src/ tests/)",
+      "Bash(python -m ruff check src/ tests/ --fix)",
+      "Bash(python -m pytest --no-header -q)",
+      "Bash(python -m ruff check src/ tests/ scripts/)",
+      "Bash(python -m ruff check src/ tests/ scripts/ --fix)",
+      "Bash(python -c \"import scipy; print\\(scipy.__version__\\)\")",
+      "Bash(python -m pytest tests/test_calibrate.py -x --no-header)"
     ]
   }
 }

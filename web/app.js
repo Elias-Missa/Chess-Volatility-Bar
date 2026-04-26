@@ -9,6 +9,9 @@
   if (typeof window.Chessboard === "undefined") missing.push("chessboard.js");
   if (typeof window.Chess     === "undefined") missing.push("chess.js");
   if (typeof window.Chart     === "undefined") missing.push("Chart.js");
+  if (typeof window.idb       === "undefined") missing.push("idb");
+  if (typeof window.JSZip     === "undefined") missing.push("JSZip");
+  if (typeof window.ChessVolLibrary === "undefined") missing.push("library.js");
   if (missing.length) {
     const msg = `Frontend failed to load: ${missing.join(", ")}. Check /vendor/* is served.`;
     const el = document.getElementById("bootError");
@@ -61,6 +64,18 @@
   const statClassWhite = $("#statClassWhite");
   const statClassBlack = $("#statClassBlack");
 
+  const libraryDrop       = $("#libraryDrop");
+  const libraryFileInput  = $("#libraryFileInput");
+  const libraryProgress   = $("#libraryProgress");
+  const libraryTableBody  = $("#libraryTableBody");
+  const libraryDateFrom   = $("#libraryDateFrom");
+  const libraryDateTo     = $("#libraryDateTo");
+  const libraryOpponent   = $("#libraryOpponent");
+  const libraryMinV       = $("#libraryMinV");
+  const libraryMaxV       = $("#libraryMaxV");
+  const libraryClassKey   = $("#libraryClassKey");
+  const libraryClassMin   = $("#libraryClassMin");
+
   const arrowToggle      = $("#arrowToggle");
   const arrowToggleGame  = $("#arrowToggleGame");
   const soundsToggle       = $("#soundsToggle");
@@ -106,10 +121,9 @@
       el.classList.toggle("hidden", !match);
     });
     // The main board row has no [data-for] because it is shared between the
-    // editor and game tabs. The About tab replaces it entirely with its own
-    // panel, so hide it there and restore it otherwise.
+    // editor and game tabs. Full-page tabs replace it entirely.
     const boardRow = document.querySelector(".board-row");
-    if (boardRow) boardRow.classList.toggle("hidden", name === "about");
+    if (boardRow) boardRow.classList.toggle("hidden", name === "about" || name === "library");
     // Re-show conditional children inside game-panel only if they have data
     if (name === "game") {
       if (loadedPlies && loadedPlies.length) moveListWrap.classList.remove("hidden");
@@ -117,6 +131,7 @@
       if (gameStatsEl && plyResults.some(Boolean)) gameStatsEl.classList.remove("hidden");
     }
     if (name === "about") ensureAboutDemos();
+    if (name === "library") refreshLibraryTable();
     // The explain panels are tab-scoped: each side panel has its own DOM. When
     // the user switches tabs we re-render the latest result into the now-
     // active panel so it doesn't show stale content.
@@ -1144,23 +1159,6 @@
   }
 
   // ── Game stats (accuracy + avg volatility) ───────────────────────────── //
-  // Chess.com-style accuracy: convert centipawn eval to a "win percentage"
-  // via a logistic curve, then score each move by how much win% the player
-  // gave up. The exponential mapping is the same one chess.com publishes:
-  // small drops barely dent accuracy, while large blunders fall off fast.
-  function winPercent(cpWhite) {
-    return 50 + 50 * (2 / (1 + Math.exp(-0.00368208 * cpWhite)) - 1);
-  }
-  function accuracyFromDrop(winBefore, winAfter) {
-    const drop = Math.max(0, winBefore - winAfter);
-    const acc  = 103.1668 * Math.exp(-0.04354 * drop) - 3.1669;
-    return Math.max(0, Math.min(100, acc));
-  }
-  function whiteCpFromPly(plyData) {
-    const turn = plyData.fen_before.split(/\s+/)[1] || "w";
-    return turn === "b" ? -plyData.eval_cp : plyData.eval_cp;
-  }
-
   function resetGameStats() {
     if (statWhiteAcc) statWhiteAcc.textContent = "—";
     if (statBlackAcc) statBlackAcc.textContent = "—";
@@ -1202,11 +1200,6 @@
     "complication",
   ];
 
-  function addClassCount(counts, key) {
-    if (!key) return;
-    counts[key] = (counts[key] || 0) + 1;
-  }
-
   function formatClassCounts(side, counts) {
     const parts = [];
     for (const key of CLASS_ORDER) {
@@ -1223,61 +1216,25 @@
   // as analysis progresses instead of waiting for done.
   function recomputeGameStats() {
     if (!gameStatsEl) return;
-    const whiteAccs = [];
-    const blackAccs = [];
-    const volScores = [];
-    const classCounts = { white: {}, black: {} };
+    const stats = window.ChessVolLibrary.computeGameStats(plyResults);
+    const fmtPct = (value) => (typeof value === "number" ? `${value.toFixed(1)}%` : "—");
 
-    for (let i = 0; i < plyResults.length; i++) {
-      const cur = plyResults[i];
-      if (!cur || !cur.ply) continue;
+    statWhiteAcc.textContent = fmtPct(stats.whiteAcc);
+    statBlackAcc.textContent = fmtPct(stats.blackAcc);
 
-      const v = cur.ply.volatility;
-      if (v && typeof v.score === "number") volScores.push(v.score);
-      const turn = cur.ply.fen_before.split(/\s+/)[1] || "w";
-      const side = turn === "w" ? "white" : "black";
-      const classification = cur.ply.classification;
-      if (classification) {
-        addClassCount(classCounts[side], classification.primary);
-        addClassCount(classCounts[side], classification.secondary);
-      }
-
-      // Accuracy needs the eval AFTER the move, which is the eval BEFORE the
-      // next ply. Skip the final ply (no follow-up to measure against).
-      const next = plyResults[i + 1];
-      if (!next || !next.ply) continue;
-
-      const cpWhiteBefore = whiteCpFromPly(cur.ply);
-      const cpWhiteAfter  = whiteCpFromPly(next.ply);
-
-      const winWBefore = winPercent(cpWhiteBefore);
-      const winWAfter  = winPercent(cpWhiteAfter);
-
-      if (turn === "w") {
-        whiteAccs.push(accuracyFromDrop(winWBefore, winWAfter));
-      } else {
-        // Black's win% is the mirror image — accuracy measures the drop
-        // from black's perspective.
-        blackAccs.push(accuracyFromDrop(100 - winWBefore, 100 - winWAfter));
-      }
-    }
-
-    const fmtPct = (arr) =>
-      arr.length ? `${(arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(1)}%` : "—";
-
-    statWhiteAcc.textContent = fmtPct(whiteAccs);
-    statBlackAcc.textContent = fmtPct(blackAccs);
-
-    if (volScores.length) {
-      const avg = volScores.reduce((a, b) => a + b, 0) / volScores.length;
-      statAvgVol.textContent = avg.toFixed(1);
-      statAvgVol.dataset.color = scoreToColor(avg);
+    if (typeof stats.avgV === "number") {
+      statAvgVol.textContent = stats.avgV.toFixed(1);
+      statAvgVol.dataset.color = scoreToColor(stats.avgV);
     } else {
       statAvgVol.textContent = "—";
       statAvgVol.removeAttribute("data-color");
     }
-    if (statClassWhite) statClassWhite.textContent = formatClassCounts("white", classCounts.white);
-    if (statClassBlack) statClassBlack.textContent = formatClassCounts("black", classCounts.black);
+    if (statClassWhite) {
+      statClassWhite.textContent = formatClassCounts("white", stats.classificationCounts.white);
+    }
+    if (statClassBlack) {
+      statClassBlack.textContent = formatClassCounts("black", stats.classificationCounts.black);
+    }
 
     gameStatsEl.classList.remove("hidden");
   }
@@ -1616,6 +1573,287 @@
   function onErr(p) {
     gameStatus.textContent = `Server error: ${p.message}`;
   }
+
+  // ── Library ──────────────────────────────────────────────────────────── //
+  let libraryGames = [];
+
+  function setLibraryProgress(message) {
+    if (!libraryProgress) return;
+    if (!message) {
+      libraryProgress.classList.add("hidden");
+      libraryProgress.textContent = "";
+      return;
+    }
+    libraryProgress.textContent = message;
+    libraryProgress.classList.remove("hidden");
+  }
+
+  function dateValue(timestamp) {
+    return new Date(timestamp).toISOString().slice(0, 10);
+  }
+
+  function fmtNumber(value, digits = 1) {
+    return typeof value === "number" ? value.toFixed(digits) : "—";
+  }
+
+  function libraryClassTotal(game, key) {
+    if (!key) return 0;
+    const counts = game.derivedStats && game.derivedStats.classificationCounts;
+    if (!counts) return 0;
+    return (counts.white && counts.white[key] || 0) + (counts.black && counts.black[key] || 0);
+  }
+
+  function passesLibraryFilters(game) {
+    const importedDate = dateValue(game.importedAt);
+    if (libraryDateFrom && libraryDateFrom.value && importedDate < libraryDateFrom.value) return false;
+    if (libraryDateTo && libraryDateTo.value && importedDate > libraryDateTo.value) return false;
+
+    const opponent = (libraryOpponent && libraryOpponent.value || "").trim().toLowerCase();
+    if (opponent) {
+      const meta = game.metadata || {};
+      const haystack = `${meta.white || ""} ${meta.black || ""}`.toLowerCase();
+      if (!haystack.includes(opponent)) return false;
+    }
+
+    const avgV = game.derivedStats ? game.derivedStats.avgV : null;
+    const minV = libraryMinV && libraryMinV.value !== "" ? Number(libraryMinV.value) : null;
+    const maxV = libraryMaxV && libraryMaxV.value !== "" ? Number(libraryMaxV.value) : null;
+    if (typeof minV === "number" && !Number.isNaN(minV) && (avgV == null || avgV < minV)) return false;
+    if (typeof maxV === "number" && !Number.isNaN(maxV) && (avgV == null || avgV > maxV)) return false;
+
+    const key = libraryClassKey && libraryClassKey.value;
+    if (key) {
+      const min = libraryClassMin && libraryClassMin.value !== "" ? Number(libraryClassMin.value) : 1;
+      if (libraryClassTotal(game, key) < min) return false;
+    }
+    return true;
+  }
+
+  async function refreshLibraryTable() {
+    if (!libraryTableBody || !window.ChessVolLibrary) return;
+    try {
+      libraryGames = await window.ChessVolLibrary.getAllGames();
+    } catch (err) {
+      libraryTableBody.innerHTML =
+        `<tr><td colspan="10" class="library-empty">Library unavailable: ${err.message || err}</td></tr>`;
+      return;
+    }
+
+    const games = libraryGames.filter(passesLibraryFilters);
+    libraryTableBody.innerHTML = "";
+    if (!games.length) {
+      const tr = document.createElement("tr");
+      const td = document.createElement("td");
+      td.colSpan = 10;
+      td.className = "library-empty";
+      td.textContent = libraryGames.length ? "No games match these filters." : "No saved games yet.";
+      tr.appendChild(td);
+      libraryTableBody.appendChild(tr);
+      return;
+    }
+
+    for (const game of games) {
+      const meta = game.metadata || {};
+      const stats = game.derivedStats || {};
+      const tr = document.createElement("tr");
+      const cells = [
+        new Date(game.importedAt).toLocaleString(),
+        meta.white || "Unknown",
+        meta.black || "Unknown",
+        meta.result || "*",
+        String((game.report && game.report.plies || []).length),
+        fmtNumber(stats.avgV),
+        typeof stats.whiteAcc === "number" ? `${stats.whiteAcc.toFixed(1)}%` : "—",
+        typeof stats.blackAcc === "number" ? `${stats.blackAcc.toFixed(1)}%` : "—",
+        String(stats.blunders || 0),
+      ];
+      cells.forEach((value) => {
+        const td = document.createElement("td");
+        td.textContent = value;
+        tr.appendChild(td);
+      });
+
+      const actions = document.createElement("td");
+      const wrap = document.createElement("div");
+      wrap.className = "library-actions";
+      const openBtn = document.createElement("button");
+      openBtn.className = "btn";
+      openBtn.type = "button";
+      openBtn.textContent = "Open";
+      openBtn.addEventListener("click", (event) => {
+        event.stopPropagation();
+        openSavedGame(game);
+      });
+      const delBtn = document.createElement("button");
+      delBtn.className = "btn btn-stop";
+      delBtn.type = "button";
+      delBtn.textContent = "Delete";
+      delBtn.addEventListener("click", async (event) => {
+        event.stopPropagation();
+        await window.ChessVolLibrary.deleteGame(game.id);
+        await refreshLibraryTable();
+      });
+      wrap.appendChild(openBtn);
+      wrap.appendChild(delBtn);
+      actions.appendChild(wrap);
+      tr.appendChild(actions);
+      tr.addEventListener("click", () => openSavedGame(game));
+      libraryTableBody.appendChild(tr);
+    }
+  }
+
+  function reportPliesToResults(report) {
+    const plies = report && Array.isArray(report.plies) ? report.plies : [];
+    return plies.map((ply, i) => ({
+      done: i + 1,
+      total: plies.length,
+      ply,
+    }));
+  }
+
+  function openSavedGame(game) {
+    resetGame();
+    pgnInput.value = game.pgn || "";
+    loadedPlies = (game.report.plies || []).map((ply) => ({
+      san: ply.san,
+      fen_before: ply.fen_before,
+      fen_after: ply.fen_after,
+    }));
+    plyResults = reportPliesToResults(game.report);
+    renderMoveList();
+    ensureChart();
+    chartWrap.classList.remove("hidden");
+    for (const entry of plyResults) {
+      appendChartPoint(entry.ply);
+      updateMoveVol(entry.ply.ply - 1, entry.ply.volatility && entry.ply.volatility.score);
+      updateMoveClassification(entry.ply.ply - 1, entry.ply.classification);
+    }
+    recomputeGameStats();
+    gameStatus.textContent = `Opened saved game: ${game.metadata.white} - ${game.metadata.black}`;
+    setTab("game");
+    if (loadedPlies.length) jumpToPly(0);
+  }
+
+  function parseSseChunk(chunk) {
+    let event = "message";
+    const dataLines = [];
+    for (const line of chunk.split(/\r?\n/)) {
+      if (!line || line.startsWith(":")) continue;
+      if (line.startsWith("event:")) event = line.slice(6).trim();
+      else if (line.startsWith("data:")) dataLines.push(line.slice(5).trim());
+    }
+    if (!dataLines.length) return null;
+    try {
+      return { event, payload: JSON.parse(dataLines.join("\n")) };
+    } catch (_) {
+      return null;
+    }
+  }
+
+  async function analyzePgnForLibrary(pgnText, onProgress) {
+    const resp = await fetch("/analyze/pgn", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pgn: pgnText, deep: deepEnabled() }),
+    });
+    if (!resp.ok || !resp.body) throw new Error(`HTTP ${resp.status}`);
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    const splitRe = /\r\n\r\n|\n\n/;
+    let buf = "";
+    let startPayload = null;
+    let donePayload = null;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      let m;
+      while ((m = splitRe.exec(buf))) {
+        const parsed = parseSseChunk(buf.slice(0, m.index));
+        buf = buf.slice(m.index + m[0].length);
+        if (!parsed) continue;
+        if (parsed.event === "start") startPayload = parsed.payload;
+        else if (parsed.event === "ply" && onProgress) onProgress(parsed.payload);
+        else if (parsed.event === "done") donePayload = parsed.payload;
+        else if (parsed.event === "error") throw new Error(parsed.payload.message || "analysis failed");
+      }
+    }
+    if (!donePayload || !Array.isArray(donePayload.plies)) {
+      throw new Error("analysis finished without a serialized report");
+    }
+    return {
+      mode: donePayload.mode || (startPayload && startPayload.mode) || "shallow",
+      params: startPayload && startPayload.params || {},
+      plies: donePayload.plies,
+    };
+  }
+
+  async function importLibraryFiles(files) {
+    if (!files || !files.length) return;
+    try {
+      const items = await window.ChessVolLibrary.pgnsFromFiles(Array.from(files));
+      if (!items.length) {
+        setLibraryProgress("No PGNs found in those files.");
+        return;
+      }
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        const meta = window.ChessVolLibrary.gameRecordFromReport(
+          item.pgn,
+          { mode: "pending", params: {}, plies: [] },
+          item.sourceName,
+        ).metadata;
+        setLibraryProgress(`Analyzing ${i + 1}/${items.length}: ${meta.white} - ${meta.black}`);
+        const report = await analyzePgnForLibrary(item.pgn, (progress) => {
+          setLibraryProgress(
+            `Analyzing ${i + 1}/${items.length}: ${meta.white} - ${meta.black} (${progress.done}/${progress.total})`,
+          );
+        });
+        const record = window.ChessVolLibrary.gameRecordFromReport(item.pgn, report, item.sourceName);
+        await window.ChessVolLibrary.putGame(record);
+      }
+      setLibraryProgress(`Imported ${items.length} game${items.length === 1 ? "" : "s"}.`);
+      await refreshLibraryTable();
+    } catch (err) {
+      setLibraryProgress(`Import failed: ${err.message || err}`);
+    }
+  }
+
+  if (libraryFileInput) {
+    libraryFileInput.addEventListener("change", async () => {
+      await importLibraryFiles(libraryFileInput.files);
+      libraryFileInput.value = "";
+    });
+  }
+  if (libraryDrop) {
+    ["dragenter", "dragover"].forEach((eventName) => {
+      libraryDrop.addEventListener(eventName, (event) => {
+        event.preventDefault();
+        libraryDrop.classList.add("drag-over");
+      });
+    });
+    ["dragleave", "drop"].forEach((eventName) => {
+      libraryDrop.addEventListener(eventName, (event) => {
+        event.preventDefault();
+        libraryDrop.classList.remove("drag-over");
+      });
+    });
+    libraryDrop.addEventListener("drop", (event) => {
+      importLibraryFiles(event.dataTransfer && event.dataTransfer.files);
+    });
+  }
+  [
+    libraryDateFrom,
+    libraryDateTo,
+    libraryOpponent,
+    libraryMinV,
+    libraryMaxV,
+    libraryClassKey,
+    libraryClassMin,
+  ].forEach((el) => {
+    if (el) el.addEventListener("input", refreshLibraryTable);
+  });
 
   // ── Chart ────────────────────────────────────────────────────────────── //
   function ensureChart() {
