@@ -12,7 +12,9 @@ from __future__ import annotations
 from typing import TypedDict
 
 from chess_vol.analyze import PlyResult
+from chess_vol.classify import Classification, PrimaryLabel, SecondaryTag
 from chess_vol.config import color_for
+from chess_vol.explain import Component, Explanation, explain
 from chess_vol.volatility import TopLine, VolatilityResult
 
 
@@ -23,6 +25,35 @@ class TopLineJson(TypedDict):
     san: str
     pv_san: list[str]
     eval_cp: int
+
+
+class ComponentJson(TypedDict):
+    """JSON shape for one :class:`Component` of an explanation."""
+
+    name: str
+    label: str
+    value: float
+    direction: str
+    detail: str
+
+
+class ExplanationJson(TypedDict):
+    """JSON shape for an :class:`Explanation`."""
+
+    summary: str
+    components: list[ComponentJson]
+    patterns: list[str]
+    headline_pattern: str | None
+
+
+class ClassificationJson(TypedDict):
+    """JSON shape for a move :class:`Classification`."""
+
+    primary: PrimaryLabel
+    secondary: SecondaryTag | None
+    eval_drop_cp: float
+    v_delta: float
+    summary: str
 
 
 class VolatilityJson(TypedDict):
@@ -40,6 +71,7 @@ class VolatilityJson(TypedDict):
     analyses: int
     color: str | None
     top_lines: list[TopLineJson]
+    explanation: ExplanationJson
 
 
 class PlyJson(TypedDict):
@@ -50,7 +82,9 @@ class PlyJson(TypedDict):
     fen_before: str
     fen_after: str
     eval_cp: int
+    move_uci: str
     volatility: VolatilityJson
+    classification: ClassificationJson | None
 
 
 class ParamsJson(TypedDict, total=False):
@@ -96,6 +130,37 @@ def _top_line_to_json(line: TopLine) -> TopLineJson:
     )
 
 
+def _component_to_json(component: Component) -> ComponentJson:
+    return ComponentJson(
+        name=component.name,
+        label=component.label,
+        value=component.value,
+        direction=component.direction,
+        detail=component.detail,
+    )
+
+
+def explanation_to_json(explanation: Explanation) -> ExplanationJson:
+    """Convert an :class:`Explanation` to a JSON-serializable dict."""
+    return ExplanationJson(
+        summary=explanation.summary,
+        components=[_component_to_json(c) for c in explanation.components],
+        patterns=list(explanation.patterns),
+        headline_pattern=explanation.headline_pattern,
+    )
+
+
+def classification_to_json(classification: Classification) -> ClassificationJson:
+    """Convert a :class:`Classification` to a JSON-serializable dict."""
+    return ClassificationJson(
+        primary=classification.primary,
+        secondary=classification.secondary,
+        eval_drop_cp=classification.eval_drop_cp,
+        v_delta=classification.v_delta,
+        summary=classification.summary,
+    )
+
+
 def volatility_to_json(result: VolatilityResult) -> VolatilityJson:
     """Convert a :class:`VolatilityResult` to a JSON-serializable dict."""
     color = color_for(result.score) if result.score is not None else None
@@ -112,6 +177,7 @@ def volatility_to_json(result: VolatilityResult) -> VolatilityJson:
         analyses=result.analyses,
         color=color,
         top_lines=[_top_line_to_json(line) for line in result.top_lines],
+        explanation=explanation_to_json(explain(result)),
     )
 
 
@@ -123,7 +189,13 @@ def ply_to_json(ply: PlyResult) -> PlyJson:
         fen_before=ply.fen_before,
         fen_after=ply.fen_after,
         eval_cp=ply.eval_cp,
+        move_uci=ply.move_uci,
         volatility=volatility_to_json(ply.volatility),
+        classification=(
+            classification_to_json(ply.classification)
+            if ply.classification is not None
+            else None
+        ),
     )
 
 
@@ -181,6 +253,9 @@ def build_fen_report(
 
 __all__: list[str] = [
     "AnalyzeReportJson",
+    "ClassificationJson",
+    "ComponentJson",
+    "ExplanationJson",
     "FenReportJson",
     "ParamsJson",
     "PlyJson",
@@ -189,6 +264,8 @@ __all__: list[str] = [
     "build_analyze_report",
     "build_fen_report",
     "build_params",
+    "classification_to_json",
+    "explanation_to_json",
     "mode_label",
     "ply_to_json",
     "volatility_to_json",

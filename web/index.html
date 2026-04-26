@@ -57,10 +57,19 @@
 
           <div class="sidebar-bar" title="Volatility — how punishing the wrong move is">
             <div class="bar-tag">Vol</div>
-            <div id="volBar" class="vol-bar" data-color="low" data-decided="false">
+            <button
+              id="volBar"
+              type="button"
+              class="vol-bar"
+              data-color="low"
+              data-decided="false"
+              aria-label="Volatility bar — click for explanation"
+              title="Click for explanation"
+            >
               <div class="vol-fill"></div>
               <div class="vol-split-line"></div>
-            </div>
+              <div class="vol-info-dot" aria-hidden="true">i</div>
+            </button>
             <div id="volLabel" class="bar-readout">—</div>
           </div>
 
@@ -142,6 +151,28 @@
 
         <div class="panel-divider"></div>
 
+        <section
+          id="volExplain"
+          class="vol-explain"
+          aria-live="polite"
+          aria-label="Volatility explanation"
+        >
+          <div class="micro-label vol-explain-head">
+            <span>Why this volatility?</span>
+            <span id="volExplainBadges" class="vol-explain-badges"></span>
+          </div>
+          <p id="volExplainSummary" class="vol-explain-summary">
+            Analyze a position to see why its volatility is what it is.
+          </p>
+          <div id="volExplainStack" class="vol-explain-stack" hidden>
+            <div class="vol-explain-stack-bar" id="volExplainStackBar"></div>
+            <ul class="vol-explain-stack-legend" id="volExplainStackLegend"></ul>
+          </div>
+          <p id="volExplainHint" class="vol-explain-hint" hidden></p>
+        </section>
+
+        <div class="panel-divider"></div>
+
         <div class="top-lines">
           <div class="micro-label">Engine lines</div>
           <ol id="topLinesList" class="top-lines-list"></ol>
@@ -202,6 +233,28 @@
 
         <div class="panel-divider"></div>
 
+        <section
+          id="volExplainGame"
+          class="vol-explain"
+          aria-live="polite"
+          aria-label="Volatility explanation"
+        >
+          <div class="micro-label vol-explain-head">
+            <span>Why this volatility?</span>
+            <span id="volExplainBadgesGame" class="vol-explain-badges"></span>
+          </div>
+          <p id="volExplainSummaryGame" class="vol-explain-summary">
+            Load and analyze a game to see why each move's volatility is what it is.
+          </p>
+          <div id="volExplainStackGame" class="vol-explain-stack" hidden>
+            <div class="vol-explain-stack-bar" id="volExplainStackBarGame"></div>
+            <ul class="vol-explain-stack-legend" id="volExplainStackLegendGame"></ul>
+          </div>
+          <p id="volExplainHintGame" class="vol-explain-hint" hidden></p>
+        </section>
+
+        <div class="panel-divider"></div>
+
         <div class="top-lines">
           <div class="micro-label">Engine lines</div>
           <ol id="topLinesListGame" class="top-lines-list"></ol>
@@ -229,6 +282,11 @@
         <div class="stat-card" data-side="vol">
           <div class="stat-label">Avg volatility</div>
           <div class="stat-value" id="statAvgVol">—</div>
+        </div>
+        <div class="stat-card stat-card-wide" data-side="classes">
+          <div class="stat-label">Classifications</div>
+          <div class="stat-note" id="statClassWhite">White: —</div>
+          <div class="stat-note" id="statClassBlack">Black: —</div>
         </div>
       </div>
       <div id="chartWrap" class="chart-wrap hidden">

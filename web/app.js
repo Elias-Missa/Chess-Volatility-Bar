@@ -58,6 +58,8 @@
   const statWhiteAcc  = $("#statWhiteAcc");
   const statBlackAcc  = $("#statBlackAcc");
   const statAvgVol    = $("#statAvgVol");
+  const statClassWhite = $("#statClassWhite");
+  const statClassBlack = $("#statClassBlack");
 
   const arrowToggle      = $("#arrowToggle");
   const arrowToggleGame  = $("#arrowToggleGame");
@@ -68,6 +70,29 @@
   const topLinesListGame = $("#topLinesListGame");
   const boardFrameEl     = document.querySelector(".board-frame");
   const SVG_NS           = "http://www.w3.org/2000/svg";
+
+  // Explain panels — one per side panel; renderExplain() writes into the one
+  // that belongs to whichever tab is active.
+  const explainEls = {
+    editor: {
+      root:    $("#volExplain"),
+      summary: $("#volExplainSummary"),
+      badges:  $("#volExplainBadges"),
+      stack:   $("#volExplainStack"),
+      bar:     $("#volExplainStackBar"),
+      legend:  $("#volExplainStackLegend"),
+      hint:    $("#volExplainHint"),
+    },
+    game: {
+      root:    $("#volExplainGame"),
+      summary: $("#volExplainSummaryGame"),
+      badges:  $("#volExplainBadgesGame"),
+      stack:   $("#volExplainStackGame"),
+      bar:     $("#volExplainStackBarGame"),
+      legend:  $("#volExplainStackLegendGame"),
+      hint:    $("#volExplainHintGame"),
+    },
+  };
 
   // ── Tab switching ─────────────────────────────────────────────────────── //
   function setTab(name) {
@@ -92,6 +117,12 @@
       if (gameStatsEl && plyResults.some(Boolean)) gameStatsEl.classList.remove("hidden");
     }
     if (name === "about") ensureAboutDemos();
+    // The explain panels are tab-scoped: each side panel has its own DOM. When
+    // the user switches tabs we re-render the latest result into the now-
+    // active panel so it doesn't show stale content.
+    if (name === "editor" || name === "game") {
+      if (lastVolJson) renderExplain(lastVolJson, lastClassificationJson);
+    }
   }
 
   document.querySelectorAll(".tab").forEach((btn) => {
@@ -648,7 +679,15 @@
     evalLabelEl.textContent = formatEval(cpSideToMove, turn);
   }
 
-  function renderVolBar(result) {
+  // Last rendered volatility JSON — re-used on tab switch so the active
+  // tab's explain panel always shows the current explanation (instead of
+  // silently going stale because it was hidden when the data arrived).
+  let lastVolJson = null;
+  let lastClassificationJson = null;
+
+  function renderVolBar(result, classification) {
+    lastVolJson = result || null;
+    lastClassificationJson = classification || null;
     if (!result || result.score == null) {
       volBarEl.style.setProperty("--fill", 0);
       volBarEl.style.setProperty("--local", 0);
@@ -656,6 +695,7 @@
       volBarEl.dataset.color = "low";
       volBarEl.dataset.decided = "false";
       volLabelEl.textContent = result && result.reason ? `— ${result.reason}` : "—";
+      renderExplain(result, classification);
       return;
     }
 
@@ -678,7 +718,207 @@
       volBarEl.style.setProperty("--split-visible", 0);
       volLabelEl.textContent = score.toFixed(1);
     }
+
+    renderExplain(result, classification);
   }
+
+  // ── Explain panel ─────────────────────────────────────────────────────── //
+  // Pretty labels for pattern badges. Names match `chess_vol.explain`
+  // PATTERN_* constants — keep in sync if those identifiers change.
+  const PATTERN_LABELS = {
+    only_move:        "only move",
+    checkmate:        "checkmate",
+    stalemate:        "stalemate",
+    mate_available:   "mate available",
+    decided:          "decided",
+    knife_edge:       "knife edge",
+    few_good_moves:   "few good moves",
+    forgiving:        "forgiving",
+    reply_dominates:  "reply dominates",
+    scale_dampened:   "winning · dampened",
+    defensive_crisis: "defensive crisis",
+  };
+
+  // One-line "what to do about it" hints — appended below the summary so the
+  // user gets actionable advice, not just diagnosis. Keyed off headline.
+  const PATTERN_HINTS = {
+    knife_edge:
+      "Slow down — there's only one good move and the alternatives lose meaningfully.",
+    defensive_crisis:
+      "Calculate concretely. The position holds with one specific move; everything else loses.",
+    few_good_moves:
+      "Pick from the top engine lines — most other moves give back ground.",
+    forgiving:
+      "Play naturally. Many reasonable moves keep the evaluation.",
+    reply_dominates:
+      "The current move is easy, but the resulting position is the hard one — think a move ahead.",
+    mate_available:
+      "Look for the mating sequence rather than picking up material.",
+    scale_dampened:
+      "Winning is winning — pick whichever path you find most clearly.",
+    decided:
+      "Position is technically over; convert with the simplest plan.",
+  };
+
+  // Markdown-lite: convert **text** → <strong>text</strong>. Not full
+  // markdown — the explainer only ever emits this one inline emphasis form.
+  function renderInlineEmphasis(text) {
+    const span = document.createElement("span");
+    const parts = text.split(/(\*\*[^*]+\*\*)/g);
+    for (const part of parts) {
+      if (part.startsWith("**") && part.endsWith("**") && part.length >= 4) {
+        const strong = document.createElement("strong");
+        strong.textContent = part.slice(2, -2);
+        span.appendChild(strong);
+      } else if (part) {
+        span.appendChild(document.createTextNode(part));
+      }
+    }
+    return span;
+  }
+
+  // Which set of explain elements to write to — depends on the active tab.
+  function activeExplainEls() {
+    const gameTabActive = document
+      .querySelector(".tab[data-tab='game']")
+      ?.classList.contains("active");
+    return gameTabActive ? explainEls.game : explainEls.editor;
+  }
+
+  // Reset BOTH explain panels — used when clearing analysis state. Keeps the
+  // inactive tab from showing stale content if the user switches back.
+  function clearExplainPanels(message) {
+    for (const els of Object.values(explainEls)) {
+      if (!els.summary) continue;
+      els.summary.textContent = message || "";
+      els.badges.innerHTML = "";
+      els.stack.hidden = true;
+      els.bar.innerHTML = "";
+      els.legend.innerHTML = "";
+      els.hint.hidden = true;
+      els.hint.textContent = "";
+    }
+  }
+
+  function renderExplain(volJson, classification) {
+    const els = activeExplainEls();
+    if (!els.summary) return;
+
+    if (!volJson || !volJson.explanation) {
+      els.summary.textContent = "Analyze a position to see why its volatility is what it is.";
+      els.badges.innerHTML = "";
+      els.stack.hidden = true;
+      els.bar.innerHTML = "";
+      els.legend.innerHTML = "";
+      els.hint.hidden = true;
+      return;
+    }
+
+    const ex = volJson.explanation;
+
+    // Summary
+    els.summary.innerHTML = "";
+    if (classification && classification.summary) {
+      const classSummary = document.createElement("span");
+      classSummary.className = "move-class-summary";
+      classSummary.textContent = classification.summary;
+      els.summary.appendChild(classSummary);
+    }
+    els.summary.appendChild(renderInlineEmphasis(ex.summary || ""));
+
+    // Badges — headline first, then any other patterns. Skip duplicates.
+    els.badges.innerHTML = "";
+    const seen = new Set();
+    const badgeOrder = [];
+    if (ex.headline_pattern) badgeOrder.push(ex.headline_pattern);
+    for (const p of ex.patterns || []) {
+      if (!seen.has(p) && p !== ex.headline_pattern) badgeOrder.push(p);
+      seen.add(p);
+    }
+    for (const p of badgeOrder) {
+      const b = document.createElement("span");
+      b.className = "vol-explain-badge";
+      b.dataset.pattern = p;
+      b.textContent = PATTERN_LABELS[p] || p;
+      els.badges.appendChild(b);
+    }
+
+    // Components: stacked bar + legend. Only render if we have at least one
+    // additive component with a non-zero value.
+    const components = (ex.components || []).filter((c) => c && c.value > 0);
+    if (components.length === 0) {
+      els.stack.hidden = true;
+      els.bar.innerHTML = "";
+      els.legend.innerHTML = "";
+    } else {
+      els.stack.hidden = false;
+      els.bar.innerHTML = "";
+      els.legend.innerHTML = "";
+
+      const adds = components.filter((c) => c.direction === "adds");
+      const removes = components.filter((c) => c.direction === "removes");
+      const totalAdds = adds.reduce((a, c) => a + c.value, 0) || 1;
+
+      // Stacked bar shows additive components proportionally.
+      for (const c of adds) {
+        const seg = document.createElement("div");
+        seg.className = "vol-explain-stack-seg";
+        seg.dataset.name = c.name;
+        seg.style.width = `${(c.value / totalAdds) * 100}%`;
+        seg.title = `${c.label}: ${c.value.toFixed(1)}`;
+        els.bar.appendChild(seg);
+      }
+
+      // Legend shows ALL components — adds *and* the dampening "removed" one
+      // so the user understands why the bar isn't bigger than it is.
+      for (const c of [...adds, ...removes]) {
+        const li = document.createElement("li");
+
+        const dot = document.createElement("span");
+        dot.className = "vol-explain-legend-dot";
+        dot.dataset.name = c.name;
+
+        const name = document.createElement("span");
+        name.className = "vol-explain-legend-name";
+        name.textContent = c.label;
+        name.title = c.detail || "";
+
+        const value = document.createElement("span");
+        value.className = "vol-explain-legend-value";
+        const sign = c.direction === "removes" ? "−" : "+";
+        value.textContent = `${sign}${c.value.toFixed(1)}`;
+
+        li.appendChild(dot);
+        li.appendChild(name);
+        li.appendChild(value);
+        els.legend.appendChild(li);
+      }
+    }
+
+    // Optional "what to do" hint — only when we have a headline pattern with
+    // a registered hint. Keeps the panel quiet for the generic case.
+    const hint = PATTERN_HINTS[ex.headline_pattern];
+    if (hint) {
+      els.hint.textContent = hint;
+      els.hint.hidden = false;
+    } else {
+      els.hint.hidden = true;
+      els.hint.textContent = "";
+    }
+  }
+
+  // Click the bar → flash the explanation panel so users discover where the
+  // explanation lives. The panel is always visible, so we don't toggle it,
+  // we just draw attention to it.
+  volBarEl.addEventListener("click", () => {
+    const els = activeExplainEls();
+    if (!els.root) return;
+    els.root.classList.remove("flash");
+    // Force reflow so re-adding the class restarts the animation.
+    void els.root.offsetWidth;
+    els.root.classList.add("flash");
+    els.root.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  });
 
   function setBarsLoading(on) {
     [evalBarEl, volBarEl].forEach((el) =>
@@ -896,6 +1136,11 @@
     clearTopLinesLists();
     setTopMove(null);
     destroyChart();
+    lastVolJson = null;
+    lastClassificationJson = null;
+    clearExplainPanels(
+      "Load and analyze a game to see why each move's volatility is what it is.",
+    );
   }
 
   // ── Game stats (accuracy + avg volatility) ───────────────────────────── //
@@ -921,6 +1166,56 @@
     if (statBlackAcc) statBlackAcc.textContent = "—";
     if (statAvgVol)   statAvgVol.textContent   = "—";
     if (statAvgVol)   statAvgVol.removeAttribute("data-color");
+    if (statClassWhite) statClassWhite.textContent = "White: —";
+    if (statClassBlack) statClassBlack.textContent = "Black: —";
+  }
+
+  const CLASS_LABELS = {
+    brilliant: "brilliant",
+    great: "great",
+    best: "best",
+    good: "good",
+    inaccuracy: "inaccuracy",
+    mistake: "mistake",
+    blunder: "blunder",
+    routine_miss: "routine miss",
+    critical_miss: "critical miss",
+    practical: "practical",
+    simplification: "simplification",
+    defusal: "defusal",
+    complication: "complication",
+  };
+
+  const CLASS_ORDER = [
+    "brilliant",
+    "great",
+    "best",
+    "good",
+    "inaccuracy",
+    "mistake",
+    "blunder",
+    "routine_miss",
+    "critical_miss",
+    "practical",
+    "simplification",
+    "defusal",
+    "complication",
+  ];
+
+  function addClassCount(counts, key) {
+    if (!key) return;
+    counts[key] = (counts[key] || 0) + 1;
+  }
+
+  function formatClassCounts(side, counts) {
+    const parts = [];
+    for (const key of CLASS_ORDER) {
+      const n = counts[key] || 0;
+      if (!n) continue;
+      parts.push(`${n} ${CLASS_LABELS[key] || key}`);
+    }
+    const label = side === "white" ? "White" : "Black";
+    return `${label}: ${parts.length ? parts.join(", ") : "—"}`;
   }
 
   // Recompute over whatever plies have streamed in so far. Cheap (just an
@@ -931,6 +1226,7 @@
     const whiteAccs = [];
     const blackAccs = [];
     const volScores = [];
+    const classCounts = { white: {}, black: {} };
 
     for (let i = 0; i < plyResults.length; i++) {
       const cur = plyResults[i];
@@ -938,6 +1234,13 @@
 
       const v = cur.ply.volatility;
       if (v && typeof v.score === "number") volScores.push(v.score);
+      const turn = cur.ply.fen_before.split(/\s+/)[1] || "w";
+      const side = turn === "w" ? "white" : "black";
+      const classification = cur.ply.classification;
+      if (classification) {
+        addClassCount(classCounts[side], classification.primary);
+        addClassCount(classCounts[side], classification.secondary);
+      }
 
       // Accuracy needs the eval AFTER the move, which is the eval BEFORE the
       // next ply. Skip the final ply (no follow-up to measure against).
@@ -946,7 +1249,6 @@
 
       const cpWhiteBefore = whiteCpFromPly(cur.ply);
       const cpWhiteAfter  = whiteCpFromPly(next.ply);
-      const turn = cur.ply.fen_before.split(/\s+/)[1] || "w";
 
       const winWBefore = winPercent(cpWhiteBefore);
       const winWAfter  = winPercent(cpWhiteAfter);
@@ -974,6 +1276,8 @@
       statAvgVol.textContent = "—";
       statAvgVol.removeAttribute("data-color");
     }
+    if (statClassWhite) statClassWhite.textContent = formatClassCounts("white", classCounts.white);
+    if (statClassBlack) statClassBlack.textContent = formatClassCounts("black", classCounts.black);
 
     gameStatsEl.classList.remove("hidden");
   }
@@ -1044,10 +1348,53 @@
     vSpan.id        = `mv-v-${idx}`;
     vSpan.textContent = "—";
 
+    const classSpan = document.createElement("span");
+    classSpan.className = "move-class-icon";
+    classSpan.id = `mv-class-${idx}`;
+
     td.appendChild(sanSpan);
     td.appendChild(vSpan);
+    td.appendChild(classSpan);
     td.addEventListener("click", () => jumpToPly(idx));
     return td;
+  }
+
+  function classificationGlyph(classification) {
+    if (!classification) return null;
+    const primaryGlyphs = {
+      brilliant: "!!",
+      great: "!",
+      mistake: "?",
+      blunder: "??",
+    };
+    const secondaryGlyphs = {
+      routine_miss: "⚠",
+      practical: "↑",
+      simplification: "↓",
+    };
+    const primary = primaryGlyphs[classification.primary];
+    const secondary = secondaryGlyphs[classification.secondary];
+    const text = [primary, secondary].filter(Boolean).join(" ");
+    if (!text) return null;
+    return {
+      text,
+      kind: primary ? classification.primary : classification.secondary,
+    };
+  }
+
+  function updateMoveClassification(idx, classification) {
+    const span = document.getElementById(`mv-class-${idx}`);
+    if (!span) return;
+    const glyph = classificationGlyph(classification);
+    if (!glyph) {
+      span.textContent = "";
+      delete span.dataset.kind;
+      span.removeAttribute("title");
+      return;
+    }
+    span.textContent = glyph.text;
+    span.dataset.kind = glyph.kind;
+    span.title = classification.summary || classification.primary;
   }
 
   function updateMoveVol(idx, score) {
@@ -1075,7 +1422,7 @@
     if (r) {
       const turn = entry.fen_before.split(/\s+/)[1] || "w";
       renderEvalBar(r.ply.volatility.best_eval_cp, turn);
-      renderVolBar(r.ply.volatility);
+      renderVolBar(r.ply.volatility, r.ply.classification);
       renderTopLines(r.ply.volatility, turn);
       const tl = r.ply.volatility.top_lines;
       setTopMove(tl && tl[0] ? tl[0].uci : null);
@@ -1241,6 +1588,7 @@
     plyResults[plyData.ply - 1] = p;
     plyStatus.textContent = `${p.done} / ${p.total} plies`;
     updateMoveVol(plyData.ply - 1, plyData.volatility.score);
+    updateMoveClassification(plyData.ply - 1, plyData.classification);
     appendChartPoint(plyData);
     recomputeGameStats();
     jumpToPly(plyData.ply - 1);
@@ -1250,6 +1598,19 @@
     gameStatus.textContent =
       `Done (${p.mode}) · ${p.plies_analysed} plies · ${p.total_analyses} engine calls`;
     plyStatus.textContent = "";
+    if (Array.isArray(p.plies)) {
+      plyResults = p.plies.map((ply, i) => ({
+        done: i + 1,
+        total: p.plies_analysed,
+        ply,
+      }));
+      p.plies.forEach((ply, i) => {
+        updateMoveVol(i, ply.volatility && ply.volatility.score);
+        updateMoveClassification(i, ply.classification);
+      });
+      recomputeGameStats();
+      if (currentPlyIdx >= 0) jumpToPly(currentPlyIdx);
+    }
   }
 
   function onErr(p) {

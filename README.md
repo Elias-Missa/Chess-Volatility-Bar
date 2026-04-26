@@ -424,24 +424,88 @@ Useful flags (shared between `analyze` and `fen`):
 The `color` field maps the score through §3.6 thresholds (`low`/`medium`/`high`) and is
 `null` whenever `score` is `null` (only-move, checkmate, stalemate).
 
-### Calibration (deferred to Phase 2.5)
+### Calibration (Phase 2.5)
 
-Phase 2 ships with the documented defaults from `config.py`. Tuning the eight interacting
-constants against a real corpus (outlined below) is tracked as a separate phase.
+The eight tunable constants — `K_SHALLOW`, `EVAL_SCALE_GRACE`, `EVAL_SCALE_WIDTH`, `EVAL_SCALE_MAX`, `MATE_BASE`, `MATE_STEP`, `DECIDED_BEST_CP`, `DECIDED_ALT_CP` — were chosen to satisfy the worked examples in §3.7 by hand. To trust them globally, calibrate them against a labelled corpus.
 
-### Calibration (Phase 2 responsibility)
+The `chess_vol.calibrate` module + `scripts/calibrate.py` CLI separate the **slow** (Stockfish on a corpus) and **fast** (re-tuning constants against cached engine output) parts so you can iterate on the math without re-running Stockfish.
 
-Seven interacting constants: `K`, `EVAL_SCALE_GRACE`, `EVAL_SCALE_WIDTH`, `EVAL_SCALE_MAX`, `MATE_BASE`, `MATE_STEP`, `MATE_MAX_N`, plus decided thresholds (800/400). The hand-worked examples in §3.7 validate the defaults for a handful of positions, but real calibration needs a test corpus:
+#### Workflow
 
-- 20–30 master-level positional games (should trend low–medium vol).
-- 20–30 attacking/sacrificial master games (should spike red on tactical moments).
-- 20–30 amateur games (wider vol distribution expected).
-- A curated set of mate positions: M1, M3, M6, M10, M15 with varied alternatives.
-- Dead-drawn endgames (K+R vs K+R simplifications).
+```
+# 1. Curate a labelled corpus. Starter set ships at:
+#    tests/fixtures/calibration_corpus.json
+#
+# Each entry is {id, fen, label?, category?}. `label` is your 0-100 sharpness
+# rating; `category` is one of "quiet", "middlegame", "sharp", "tactical",
+# "endgame" (or any name you add to DEFAULT_TARGETS).
 
-Run each twice — shallow and deep. Each mode gets its own K (`K_shallow`, `K_deep`). Document final constants in `config.py` and worked examples in the README.
+# 2. Run Stockfish once on the corpus. Slow — minutes for 20 positions, hours
+#    for hundreds. Cached as JSON so you only do it once per (depth, multipv).
+python scripts/calibrate.py dump tests/fixtures/calibration_corpus.json \
+    --out cache/analyses.json --depth 18 --multipv 6
 
-The constants are coupled. Don't tune them independently. Suggested order: tune `MATE_STEP` first against the mate-position set, then `EVAL_SCALE_WIDTH` against the "winning with options" vs. "knife's-edge" distinction, then `K` against the full corpus to hit the target visual feel (~30% of master middlegame moves in yellow, sharp tactics reliably red).
+# 3. See where the *current* constants land:
+python scripts/calibrate.py report tests/fixtures/calibration_corpus.json \
+    --analyses cache/analyses.json
+# → mean V per category, bucket distributions vs targets, expert MSE vs labels.
+
+# 4. Tune. Three modes:
+#    - expert         : minimise MSE between V and your hand labels
+#    - distributional : minimise KL between observed bucket distribution and
+#                       the per-category targets in chess_vol.calibrate.DEFAULT_TARGETS
+#    - blended (default): both, weighted to balance their scales
+python scripts/calibrate.py tune tests/fixtures/calibration_corpus.json \
+    --analyses cache/analyses.json --mode blended --out tuned.json
+# → prints a ready-to-paste replacement for chess_vol/config.py.
+
+# 5. Re-report under the tuned constants and compare:
+python scripts/calibrate.py report tests/fixtures/calibration_corpus.json \
+    --analyses cache/analyses.json --constants tuned.json
+```
+
+#### Three calibration modes — when to use each
+
+| Mode | Needs | What it optimises |
+|---|---|---|
+| **`expert`** | Hand-labelled positions (`label` set) | V matches your gut-feel sharpness rating per position |
+| **`distributional`** | Categorised positions (`category` set) | Bucket shares per category match `DEFAULT_TARGETS` |
+| **`blended`** (default) | Either or both | Weighted sum — robust when only some entries are labelled |
+
+The blended mode is the recommended starting point. Expert-mode tuning is sharper but only constrains the constants where you have labels; distributional mode constrains the *shape* of the V distribution but not specific positions. Together they cover both.
+
+#### Why the slow/fast split matters
+
+The optimiser may evaluate the loss hundreds of times. Each evaluation is just a re-computation of V from the cached MultiPV results — no engine call. A 200-position corpus tunes in seconds. If we re-ran Stockfish in each iteration, the same tune would take days.
+
+This works because **mate translation, eval-aware scaling, and normalisation are all post-hoc**: the engine output (cp / mate-in-N from STM POV) doesn't depend on the constants. Only the projection from that output to the 0-100 V score does. So we cache once, tune freely.
+
+#### Recommended corpus shape
+
+The starter set has 20 positions across 4 categories — enough to verify the pipeline works, not enough to trust the result globally. For real calibration, target **150-300 positions**:
+
+- **40-60 quiet** — opening positions, dead-drawn endgames, simple K+P endings. Should sit ≥ 90% in the low (green) bucket.
+- **40-60 middlegame** — master games sampled at random plies. Should distribute roughly 55% low, 35% medium, 10% high (the `middlegame` target).
+- **40-60 sharp** — tactical middlegames, sacrificial attacks (Tal, Shirov, Topalov style). Should distribute roughly 20% low, 45% medium, 35% high.
+- **20-40 tactical** — curated mate-in-N puzzles, only-move studies, swindle positions. Should land predominantly high.
+- **10-20 endgame** — instructive endings (Lucena, Philidor, opposite-coloured bishops). Mixed target depending on character.
+
+Label each by hand on a 0-100 scale. Disagreement between human raters is normal; you're not aiming for one true value, you're aiming for "the algorithm broadly agrees with human intuition."
+
+#### Tuning order matters
+
+The constants are coupled. If you must tune them in stages (rather than all-at-once via the optimiser), the order is:
+
+1. **`MATE_STEP`** first — calibrate against the mate set so M1 vs M20 spread feels right.
+2. **`EVAL_SCALE_WIDTH`** next — against the contrast between "winning with multiple paths" and "knife's-edge".
+3. **`K_SHALLOW`** last — to land the global distribution shape.
+4. **`DECIDED_BEST_CP` / `DECIDED_ALT_CP`** are mostly UX (they only affect bar dimming), tune by eye.
+
+The optimiser does this jointly, which is fine for the blended loss. Stage tuning is for when you suspect the optimiser found a local minimum and want to seed it differently.
+
+#### Deep mode
+
+The current pipeline calibrates `K_SHALLOW` only. Deep mode (`recurse_depth=2`) re-uses the same shape but with `K_DEEP` and `recurse_alpha`. To calibrate those, extend `dump` to recursively cache the top-k child positions too — left as future work since it expands the cache by ~13× per position. Until then, `K_DEEP = K_SHALLOW` is a reasonable default.
 
 ---
 
@@ -532,7 +596,9 @@ Surface these to the user; don't silently decide.
 - [ ] **Phase 1:** `compute_volatility` works one-ply, all unit + integration tests pass.
 - [ ] **Phase 1.5:** `recurse_depth > 0` works; composition + side-to-move + regression tests pass.
 - [ ] **Phase 2:** CLI runs end-to-end on a PGN in both modes; `K_shallow`, `K_deep`, and all other constants tuned against a real corpus.
+- [x] **Phase 2.5:** Calibration scaffolding — `chess_vol.calibrate` module + `scripts/calibrate.py` + starter labelled corpus + tests. Run `dump → tune → report` to lock in tuned constants.
 - [x] **Phase 3:** FastAPI server (`chess-vol serve`) + drag-and-drop board editor; PGN paste/upload streams per-ply volatility via SSE; eval bar + volatility bar rendered side-by-side in both tabs.
+- [x] **Explain panel:** `chess_vol.explain` produces a deterministic, structured "why this volatility?" explanation — patterns, components, summary — surfaced inline in the side panel under each tab and reachable by clicking the bar.
 - [ ] **Phase 4:** Extension shows a live one-ply bar on chess.com, backed by local server.
 
 Build sequentially. Do not start a phase until the previous is done and its tests pass.

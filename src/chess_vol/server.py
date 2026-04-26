@@ -260,6 +260,7 @@ def create_app() -> FastAPI:
                             "plies_analysed": len(results),
                             "total_analyses": total_analyses,
                             "mode": mode,
+                            "plies": [dict(ply_to_json(ply)) for ply in results],
                         },
                     )
                 )

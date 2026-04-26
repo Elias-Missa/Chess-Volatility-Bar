@@ -10,6 +10,7 @@ from typing import Any
 import chess
 import chess.pgn
 
+from chess_vol.classify import Classification, classify_move
 from chess_vol.volatility import (
     EngineLike,
     VolatilityResult,
@@ -38,6 +39,12 @@ class PlyResult:
 
     volatility: VolatilityResult
     """Full volatility result for the pre-move position."""
+
+    move_uci: str = ""
+    """UCI of the move played at this ply."""
+
+    classification: Classification | None = None
+    """Optional move classification attached after neighbouring plies are known."""
 
 
 ProgressCallback = Callable[[int, int, PlyResult], None]
@@ -88,6 +95,7 @@ def analyze_pgn(
 
         fen_before = board.fen()
         san = board.san(move)
+        move_uci = move.uci()
 
         vol = compute_volatility(board, engine, **volatility_kwargs)
 
@@ -101,10 +109,15 @@ def analyze_pgn(
             fen_after=fen_after,
             eval_cp=vol.best_eval_cp,
             volatility=vol,
+            move_uci=move_uci,
         )
         results.append(result)
 
         if progress is not None:
             progress(ply_index, ply_cap, result)
+
+    for idx, result in enumerate(results):
+        next_result = results[idx + 1] if idx + 1 < len(results) else None
+        result.classification = classify_move(result, next_result)
 
     return results

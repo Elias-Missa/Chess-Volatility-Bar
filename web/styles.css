@@ -790,6 +790,12 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .stat-card[data-side="black"]::before {
   background: linear-gradient(90deg, transparent, rgba(120,120,120,0.55), transparent);
 }
+.stat-card[data-side="classes"]::before {
+  background: linear-gradient(90deg, transparent, rgba(80,210,255,0.42), transparent);
+}
+.stat-card-wide {
+  grid-column: 1 / -1;
+}
 
 .stat-label {
   font-size: 9.5px;
@@ -806,6 +812,10 @@ button, input, textarea, select { font: inherit; color: inherit; }
   color: var(--fg);
   letter-spacing: -0.02em;
   line-height: 1.1;
+}
+.stat-note {
+  font-size: 11.5px;
+  color: var(--fg-2);
 }
 
 .stat-card[data-side="vol"] .stat-value[data-color="low"]    { color: var(--vol-low); text-shadow: 0 0 10px var(--vol-low-glow); }
@@ -880,6 +890,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
 }
 .move-cell.active .move-san { color: var(--green-ink); }
 .move-cell.active .move-vscore { color: rgba(0,0,0,.6); }
+.move-cell.active .move-class-icon { color: var(--green-ink); text-shadow: none; }
 
 .move-san {
   font-family: var(--font-mono);
@@ -900,6 +911,29 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .move-vscore[data-color="low"]    { color: var(--vol-low); }
 .move-vscore[data-color="medium"] { color: var(--vol-med); }
 .move-vscore[data-color="high"]   { color: var(--vol-high); font-weight: 700; }
+
+.move-class-icon {
+  display: inline-block;
+  margin-left: 4px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 800;
+  vertical-align: middle;
+}
+.move-class-icon:empty { display: none; }
+.move-class-icon[data-kind="brilliant"] { color: #ffd166; text-shadow: 0 0 10px rgba(255,209,102,0.45); }
+.move-class-icon[data-kind="great"] { color: var(--vol-low); text-shadow: 0 0 8px var(--vol-low-glow); }
+.move-class-icon[data-kind="mistake"] { color: var(--vol-med); }
+.move-class-icon[data-kind="blunder"] { color: var(--vol-high); font-weight: 900; }
+.move-class-icon[data-kind="routine_miss"] { color: var(--vol-med); }
+.move-class-icon[data-kind="practical"] { color: #50d2ff; text-shadow: 0 0 8px rgba(80,210,255,0.35); }
+.move-class-icon[data-kind="simplification"] { color: var(--fg-3); }
+
+.move-class-summary {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--fg);
+}
 
 /* Alternating row backgrounds */
 .move-table tr:nth-child(even) .move-num,
@@ -1153,4 +1187,220 @@ button, input, textarea, select { font: inherit; color: inherit; }
   :root { --board-size: clamp(260px, calc(100vw - 80px), 360px); }
   .app { padding: 4px 12px 20px; gap: 8px; }
   .app-title { font-size: 18px; letter-spacing: 0.12em; }
+}
+
+/* ── Volatility "Why this volatility?" explanation panel ─────── */
+
+/* The vol bar is now a button, so reset native button chrome and make it
+   visually clickable. */
+button.vol-bar {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+button.vol-bar:focus-visible {
+  outline: 2px solid var(--vol-low-hi);
+  outline-offset: 2px;
+}
+button.vol-bar:hover .vol-info-dot { opacity: 1; }
+
+.vol-info-dot {
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  color: rgba(255, 255, 255, 0.85);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 14px;
+  text-align: center;
+  pointer-events: none;
+  opacity: 0.55;
+  transition: opacity 180ms ease;
+}
+
+.vol-explain {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.vol-explain-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.vol-explain-badges {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.vol-explain-badge {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-2);
+  color: var(--fg-2, #c8c8c8);
+  text-transform: lowercase;
+}
+/* Pattern-specific badge colours — keyed off the headline pattern so the
+   most important tag stands out. */
+.vol-explain-badge[data-pattern="knife_edge"],
+.vol-explain-badge[data-pattern="defensive_crisis"] {
+  background: rgba(224, 68, 58, 0.14);
+  border-color: rgba(224, 68, 58, 0.45);
+  color: var(--vol-high-hi);
+}
+.vol-explain-badge[data-pattern="few_good_moves"],
+.vol-explain-badge[data-pattern="reply_dominates"],
+.vol-explain-badge[data-pattern="mate_available"] {
+  background: rgba(224, 179, 48, 0.12);
+  border-color: rgba(224, 179, 48, 0.40);
+  color: var(--vol-med-hi);
+}
+.vol-explain-badge[data-pattern="forgiving"] {
+  background: rgba(57, 255, 20, 0.10);
+  border-color: rgba(57, 255, 20, 0.35);
+  color: var(--vol-low-hi);
+}
+.vol-explain-badge[data-pattern="decided"],
+.vol-explain-badge[data-pattern="scale_dampened"] {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: var(--border-2);
+  color: var(--fg-3, #9a9a9a);
+  font-style: italic;
+}
+
+.vol-explain-summary {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--fg-1, #e0e0e0);
+}
+/* Inline emphasis from `**move**` → <strong> rendered subtly */
+.vol-explain-summary strong {
+  font-weight: 600;
+  color: var(--fg, #fff);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 0 3px;
+  border-radius: 3px;
+}
+
+.vol-explain-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--bg-2);
+  border: 1px solid var(--border-1);
+  border-radius: var(--r-sm);
+  padding: 8px 10px;
+}
+
+.vol-explain-stack-bar {
+  position: relative;
+  width: 100%;
+  height: 10px;
+  background: var(--surface-1);
+  border-radius: 5px;
+  overflow: hidden;
+  display: flex;
+}
+.vol-explain-stack-seg {
+  height: 100%;
+  flex-shrink: 0;
+  transition: width 240ms ease;
+}
+.vol-explain-stack-seg[data-name="move_choice"] {
+  background: linear-gradient(90deg, var(--vol-med), var(--vol-med-hi));
+}
+.vol-explain-stack-seg[data-name="reply"] {
+  background: linear-gradient(90deg, var(--vol-low), var(--vol-low-hi));
+  opacity: 0.85;
+}
+.vol-explain-stack-seg[data-name="eval_scale"] {
+  /* Dampening removed contribution — render as a hatched neutral block. */
+  background: repeating-linear-gradient(
+    135deg,
+    var(--surface-3) 0 4px,
+    var(--surface-2) 4px 8px
+  );
+  opacity: 0.6;
+}
+
+.vol-explain-stack-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.vol-explain-stack-legend li {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--fg-2, #c8c8c8);
+}
+.vol-explain-legend-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  position: relative;
+  top: 1px;
+}
+.vol-explain-legend-dot[data-name="move_choice"] { background: var(--vol-med-hi); }
+.vol-explain-legend-dot[data-name="reply"]       { background: var(--vol-low-hi); }
+.vol-explain-legend-dot[data-name="eval_scale"]  {
+  background: repeating-linear-gradient(
+    135deg,
+    var(--surface-3) 0 2px,
+    var(--surface-2) 2px 4px
+  );
+  border: 1px solid var(--border-2);
+}
+.vol-explain-legend-name { font-weight: 500; color: var(--fg-1, #e0e0e0); }
+.vol-explain-legend-value {
+  margin-left: auto;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 10.5px;
+  color: var(--fg-3, #9a9a9a);
+}
+
+.vol-explain-hint {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--fg-3, #9a9a9a);
+  font-style: italic;
+}
+
+/* When the user clicks the bar we briefly highlight the explain panel so
+   they can find where the explanation lives. */
+@keyframes vol-explain-flash {
+  0%   { box-shadow: 0 0 0 0 var(--vol-med-glow, rgba(224, 179, 48, 0.5)); }
+  60%  { box-shadow: 0 0 0 4px var(--vol-med-glow, rgba(224, 179, 48, 0.5)); }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+.vol-explain.flash {
+  border-radius: var(--r-sm);
+  animation: vol-explain-flash 700ms ease-out;
 }
