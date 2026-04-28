@@ -5,12 +5,12 @@
 
   // ── Vendor check ────────────────────────────────────────────────────────── //
   const missing = [];
-  if (typeof window.jQuery    === "undefined") missing.push("jQuery");
+  if (typeof window.jQuery === "undefined") missing.push("jQuery");
   if (typeof window.Chessboard === "undefined") missing.push("chessboard.js");
-  if (typeof window.Chess     === "undefined") missing.push("chess.js");
-  if (typeof window.Chart     === "undefined") missing.push("Chart.js");
-  if (typeof window.idb       === "undefined") missing.push("idb");
-  if (typeof window.JSZip     === "undefined") missing.push("JSZip");
+  if (typeof window.Chess === "undefined") missing.push("chess.js");
+  if (typeof window.Chart === "undefined") missing.push("Chart.js");
+  if (typeof window.idb === "undefined") missing.push("idb");
+  if (typeof window.JSZip === "undefined") missing.push("JSZip");
   if (typeof window.ChessVolLibrary === "undefined") missing.push("library.js");
   if (missing.length) {
     const msg = `Frontend failed to load: ${missing.join(", ")}. Check /vendor/* is served.`;
@@ -27,85 +27,85 @@
 
   // ── DOM refs ─────────────────────────────────────────────────────────────  //
   const $ = (s) => document.querySelector(s);
-  const fenInput      = $("#fenInput");
-  const copyFenBtn    = $("#copyFen");
-  const deepToggle    = $("#deepToggle");
+  const fenInput = $("#fenInput");
+  const copyFenBtn = $("#copyFen");
+  const deepToggle = $("#deepToggle");
   const deepToggleGame = $("#deepToggleGame");
-  const evalBarEl     = $("#evalBar");
-  const evalLabelEl   = $("#evalLabel");
-  const volBarEl      = $("#volBar");
-  const volLabelEl    = $("#volLabel");
+  const evalBarEl = $("#evalBar");
+  const evalLabelEl = $("#evalLabel");
+  const volBarEl = $("#volBar");
+  const volLabelEl = $("#volLabel");
 
-  const btnStart      = $("#btnStart");
-  const btnClear      = $("#btnClear");
-  const btnFlip       = $("#btnFlip");
+  const btnStart = $("#btnStart");
+  const btnClear = $("#btnClear");
+  const btnFlip = $("#btnFlip");
   const btnAnalyzeFen = $("#btnAnalyzeFen");
-  const autoAnalyze   = $("#autoAnalyze");
-  const editorStatus  = $("#editorStatus");
-  const turnWhiteBtn  = $("#turnWhite");
-  const turnBlackBtn  = $("#turnBlack");
+  const autoAnalyze = $("#autoAnalyze");
+  const editorStatus = $("#editorStatus");
+  const turnWhiteBtn = $("#turnWhite");
+  const turnBlackBtn = $("#turnBlack");
 
-  const pgnFileInput  = $("#pgnFile");
-  const pgnInput      = $("#pgnInput");
-  const btnLoadPgn    = $("#btnLoadPgn");
+  const pgnFileInput = $("#pgnFile");
+  const pgnInput = $("#pgnInput");
+  const btnLoadPgn = $("#btnLoadPgn");
   const btnAnalyzePgn = $("#btnAnalyzePgn");
-  const btnStopPgn    = $("#btnStopPgn");
-  const btnFlipGame   = $("#btnFlipGame");
-  const gameStatus    = $("#gameStatus");
-  const plyStatus     = $("#plyStatus");
-  const moveListEl    = $("#moveList");
-  const chartWrap     = $("#chartWrap");
-  const moveListWrap  = $("#moveListWrap");
-  const chartCanvas   = $("#chart");
-  const gameStatsEl   = $("#gameStats");
-  const statWhiteAcc  = $("#statWhiteAcc");
-  const statBlackAcc  = $("#statBlackAcc");
-  const statAvgVol    = $("#statAvgVol");
+  const btnStopPgn = $("#btnStopPgn");
+  const btnFlipGame = $("#btnFlipGame");
+  const gameStatus = $("#gameStatus");
+  const plyStatus = $("#plyStatus");
+  const moveListEl = $("#moveList");
+  const chartWrap = $("#chartWrap");
+  const moveListWrap = $("#moveListWrap");
+  const chartCanvas = $("#chart");
+  const gameStatsEl = $("#gameStats");
+  const statWhiteAcc = $("#statWhiteAcc");
+  const statBlackAcc = $("#statBlackAcc");
+  const statAvgVol = $("#statAvgVol");
   const statClassWhite = $("#statClassWhite");
   const statClassBlack = $("#statClassBlack");
 
-  const libraryDrop       = $("#libraryDrop");
-  const libraryFileInput  = $("#libraryFileInput");
-  const libraryProgress   = $("#libraryProgress");
-  const libraryTableBody  = $("#libraryTableBody");
-  const libraryDateFrom   = $("#libraryDateFrom");
-  const libraryDateTo     = $("#libraryDateTo");
-  const libraryOpponent   = $("#libraryOpponent");
-  const libraryMinV       = $("#libraryMinV");
-  const libraryMaxV       = $("#libraryMaxV");
-  const libraryClassKey   = $("#libraryClassKey");
-  const libraryClassMin   = $("#libraryClassMin");
+  const libraryDrop = $("#libraryDrop");
+  const libraryFileInput = $("#libraryFileInput");
+  const libraryProgress = $("#libraryProgress");
+  const libraryTableBody = $("#libraryTableBody");
+  const libraryDateFrom = $("#libraryDateFrom");
+  const libraryDateTo = $("#libraryDateTo");
+  const libraryOpponent = $("#libraryOpponent");
+  const libraryMinV = $("#libraryMinV");
+  const libraryMaxV = $("#libraryMaxV");
+  const libraryClassKey = $("#libraryClassKey");
+  const libraryClassMin = $("#libraryClassMin");
 
-  const arrowToggle      = $("#arrowToggle");
-  const arrowToggleGame  = $("#arrowToggleGame");
-  const soundsToggle       = $("#soundsToggle");
+  const arrowToggle = $("#arrowToggle");
+  const arrowToggleGame = $("#arrowToggleGame");
+  const soundsToggle = $("#soundsToggle");
   const soundsToggleEditor = $("#soundsToggleEditor");
-  const arrowLayer       = $("#arrowLayer");
-  const topLinesList     = $("#topLinesList");
+  const arrowLayer = $("#arrowLayer");
+  const topLinesList = $("#topLinesList");
   const topLinesListGame = $("#topLinesListGame");
-  const boardFrameEl     = document.querySelector(".board-frame");
-  const SVG_NS           = "http://www.w3.org/2000/svg";
+  const boardFrameEl = document.querySelector(".board-frame");
+  const SVG_NS = "http://www.w3.org/2000/svg";
 
   // Explain panels — one per side panel; renderExplain() writes into the one
   // that belongs to whichever tab is active.
   const explainEls = {
     editor: {
-      root:    $("#volExplain"),
+      root: $("#volExplain"),
       summary: $("#volExplainSummary"),
-      badges:  $("#volExplainBadges"),
-      stack:   $("#volExplainStack"),
-      bar:     $("#volExplainStackBar"),
-      legend:  $("#volExplainStackLegend"),
-      hint:    $("#volExplainHint"),
+      badges: $("#volExplainBadges"),
+      stack: $("#volExplainStack"),
+      bar: $("#volExplainStackBar"),
+      legend: $("#volExplainStackLegend"),
+      hint: $("#volExplainHint"),
     },
     game: {
-      root:    $("#volExplainGame"),
+      root: $("#volExplainGame"),
       summary: $("#volExplainSummaryGame"),
-      badges:  $("#volExplainBadgesGame"),
-      stack:   $("#volExplainStackGame"),
-      bar:     $("#volExplainStackBarGame"),
-      legend:  $("#volExplainStackLegendGame"),
-      hint:    $("#volExplainHintGame"),
+      badges: $("#volExplainBadgesGame"),
+      stack: $("#volExplainStackGame"),
+      bar: $("#volExplainStackBarGame"),
+      legend: $("#volExplainStackLegendGame"),
+      hint: $("#volExplainHintGame"),
     },
   };
 
@@ -150,10 +150,45 @@
   // container (it measures on init). Values are hardcoded — no backend call.
   let aboutDemosReady = false;
 
-  const DEMO_DRY_FEN   = "4k3/p2p1p1p/1p1b1p2/8/8/1P1B1P2/P2P1P1P/4K3 w - - 0 1";
+  const DEMO_DRY_FEN = "4k3/p2p1p1p/1p1b1p2/8/8/1P1B1P2/P2P1P1P/4K3 w - - 0 1";
   // Qxg7+!! Kxg7 is stalemate. Any other White move loses to ...Qxg2#
   // (black queen on g2 supported by bishop on b7 along the long diagonal).
   const DEMO_SHARP_FEN = "2r2rk1/pb1n2pp/8/4Q3/8/7q/5bPP/7K w - - 0 1";
+
+  // Section 2 — winning side (+3.00)
+  const DEMO_WIN_LOW_FEN = "4k3/8/8/4P3/4P3/4K3/8/8 w - - 0 1";     // low V, technical
+  const DEMO_WIN_HIGH_FEN = "2r3k1/5ppp/4p3/3pP3/3PN3/PR4P1/5P1P/6K1 w - - 0 1"; // high V, only-move
+
+  // Section 3 — losing side (−3.00)
+  const DEMO_LOSE_LOW_FEN = "8/8/4k3/4p3/4p3/8/8/4K3 w - - 0 1";    // low V, decided
+  const DEMO_LOSE_HIGH_FEN = "r5k1/pp3ppp/8/4N3/8/q6P/PP3PP1/3R3K w - - 0 1"; // high V, swindle
+
+  // Section 4 — same position, two clocks
+  const DEMO_CLOCK_FEN = "r3k2r/pbq2ppp/1pn1pn2/2pp4/3P1B2/2P1PN2/PPQNBPPP/R4RK1 b kq - 0 1";
+
+  // Section 5 — Kasparov–Topalov, Wijk aan Zee 1999
+  const FAMOUS_PGN = `[Event "Hoogovens A Tournament"]
+[Site "Wijk aan Zee NED"]
+[Date "1999.01.20"]
+[White "Kasparov, Garry"]
+[Black "Topalov, Veselin"]
+[Result "1-0"]
+
+1. e4 d6 2. d4 Nf6 3. Nc3 g6 4. Be3 Bg7 5. Qd2 c6 6. f3 b5 7. Nge2 Nbd7 8. Bh6 Bxh6 9. Qxh6 Bb7 10. a3 e5 11. O-O-O Qe7 12. Kb1 a6 13. Nc1 O-O-O 14. Nb3 exd4 15. Rxd4 c5 16. Rd1 Nb6 17. g3 Kb8 18. Na5 Ba8 19. Bh3 d5 20. Qf4+ Ka7 21. Rhe1 d4 22. Nd5 Nbxd5 23. exd5 Qd6 24. Rxd4 cxd4 25. Re7+ Kb6 26. Qxd4+ Kxa5 27. b4+ Ka4 28. Qc3 Qxd5 29. Ra7 Bb7 30. Rxb7 Qc4 31. Qxf6 Kxa3 32. Qxa6+ Kxb4 33. c3+ Kxc3 34. Qa1+ Kd2 35. Qb2+ Kd1 36. Bf1 Rd2 37. Rd7 Rxd7 38. Bxc4 bxc4 39. Qxh8 Rd3 40. Qa8 c3 41. Qa4+ Ke1 42. f4 f5 43. Kc1 Rd2 44. Qa7 1-0`;
+
+  // Ply window for the famous-game slider: moves 18–28 = ply indices 34–55
+  const FAMOUS_PLY_START = 34;
+  const FAMOUS_PLY_END = 55;
+
+  // Tiny FNV-1a hash for cache keying
+  function fnv1a(str) {
+    let h = 0x811c9dc5;
+    for (let i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i);
+      h = Math.imul(h, 0x01000193);
+    }
+    return (h >>> 0).toString(36);
+  }
 
   function paintEvalInto(barEl, labelEl, cpWhite) {
     if (!barEl || !labelEl) return;
@@ -178,29 +213,317 @@
   }
 
   function paintDemoBars() {
+    // Section 1 — draws
     paintEvalInto($("#demoEvalA"), $("#demoEvalLabelA"), 0);
-    paintVolInto ($("#demoVolA"),  $("#demoVolLabelA"),  4);
+    paintVolInto($("#demoVolA"), $("#demoVolLabelA"), 4);
     paintEvalInto($("#demoEvalB"), $("#demoEvalLabelB"), 0);
-    paintVolInto ($("#demoVolB"),  $("#demoVolLabelB"),  88);
+    paintVolInto($("#demoVolB"), $("#demoVolLabelB"), 88);
+
+    // Section 2 — winning
+    paintEvalInto($("#demoEvalC"), $("#demoEvalLabelC"), 300);
+    paintVolInto($("#demoVolC"), $("#demoVolLabelC"), 6);
+    paintEvalInto($("#demoEvalD"), $("#demoEvalLabelD"), 300);
+    paintVolInto($("#demoVolD"), $("#demoVolLabelD"), 78);
+
+    // Section 3 — losing
+    paintEvalInto($("#demoEvalE"), $("#demoEvalLabelE"), -300);
+    paintVolInto($("#demoVolE"), $("#demoVolLabelE"), 8);
+    // Mark the losing-low card as decided
+    const volE = $("#demoVolE");
+    if (volE) volE.dataset.decided = "true";
+    paintEvalInto($("#demoEvalF"), $("#demoEvalLabelF"), -300);
+    paintVolInto($("#demoVolF"), $("#demoVolLabelF"), 82);
   }
 
   function ensureAboutDemos() {
     if (aboutDemosReady) return;
     if (!document.getElementById("demoBoardA") || !document.getElementById("demoBoardB")) return;
     aboutDemosReady = true;
+
+    // Section 1
     Chessboard("demoBoardA", {
       position: DEMO_DRY_FEN.split(" ")[0],
-      draggable: false,
-      showNotation: false,
+      draggable: false, showNotation: false,
       pieceTheme: "/vendor/img/pieces/{piece}.png",
     });
     Chessboard("demoBoardB", {
       position: DEMO_SHARP_FEN.split(" ")[0],
+      draggable: false, showNotation: false,
+      pieceTheme: "/vendor/img/pieces/{piece}.png",
+    });
+
+    // Section 2
+    Chessboard("demoBoardC", {
+      position: DEMO_WIN_LOW_FEN.split(" ")[0],
+      draggable: false, showNotation: false,
+      pieceTheme: "/vendor/img/pieces/{piece}.png",
+    });
+    Chessboard("demoBoardD", {
+      position: DEMO_WIN_HIGH_FEN.split(" ")[0],
+      draggable: false, showNotation: false,
+      pieceTheme: "/vendor/img/pieces/{piece}.png",
+    });
+
+    // Section 3
+    Chessboard("demoBoardE", {
+      position: DEMO_LOSE_LOW_FEN.split(" ")[0],
+      draggable: false, showNotation: false,
+      pieceTheme: "/vendor/img/pieces/{piece}.png",
+    });
+    Chessboard("demoBoardF", {
+      position: DEMO_LOSE_HIGH_FEN.split(" ")[0],
+      draggable: false, showNotation: false,
+      pieceTheme: "/vendor/img/pieces/{piece}.png",
+    });
+
+    // Section 4 — clock comparison (single board)
+    Chessboard("demoBoardG", {
+      position: DEMO_CLOCK_FEN.split(" ")[0],
+      draggable: false, showNotation: false,
+      pieceTheme: "/vendor/img/pieces/{piece}.png",
+    });
+
+    paintDemoBars();
+    initFamousGame();
+  }
+
+  // ── Famous-game scrubber ────────────────────────────────────────────── //
+  let famousChart = null;
+  let famousBoard = null;
+  let famousPlies = [];
+
+  function initFamousGame() {
+    const boardEl = document.getElementById("famousBoard");
+    if (!boardEl) return;
+
+    // Parse PGN
+    const plies = parseFamousPgn(FAMOUS_PGN);
+    if (!plies || !plies.length) return;
+    famousPlies = plies;
+
+    // Init board at ply 34 (before move 18)
+    const startPly = Math.min(FAMOUS_PLY_START, plies.length - 1);
+    famousBoard = Chessboard("famousBoard", {
+      position: plies[startPly].fen_before.split(" ")[0],
       draggable: false,
       showNotation: false,
       pieceTheme: "/vendor/img/pieces/{piece}.png",
     });
-    paintDemoBars();
+
+    // Slider setup
+    const slider = document.getElementById("famousSlider");
+    const sanLabel = document.getElementById("famousSanLabel");
+    const evalLabel = document.getElementById("famousEvalLabel");
+    const volLabel = document.getElementById("famousVolLabel");
+    const statusEl = document.getElementById("famousStatus");
+
+    if (slider) {
+      slider.min = String(FAMOUS_PLY_START);
+      slider.max = String(Math.min(FAMOUS_PLY_END, plies.length - 1));
+      slider.value = String(startPly);
+    }
+
+    // Init the mini chart
+    const chartCanvas = document.getElementById("famousChart");
+    if (chartCanvas) {
+      const ctx = chartCanvas.getContext("2d");
+      famousChart = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: [],
+          datasets: [{
+            label: "V",
+            data: [],
+            borderColor: "#39ff14",
+            backgroundColor: "rgba(57,255,20,0.10)",
+            borderWidth: 1.4,
+            pointRadius: 1.5,
+            pointHoverRadius: 4,
+            pointBackgroundColor: "#39ff14",
+            tension: 0.3,
+            fill: true,
+            spanGaps: true,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: { duration: 0 },
+          plugins: { legend: { display: false }, tooltip: { enabled: false } },
+          scales: {
+            y: { min: 0, max: 100, display: false },
+            x: { display: false },
+          },
+        },
+      });
+    }
+
+    // Cache check
+    const cacheKey = "famousGameV2:" + fnv1a(FAMOUS_PGN);
+    let cached = null;
+    try {
+      const raw = localStorage.getItem(cacheKey);
+      if (raw) cached = JSON.parse(raw);
+    } catch (_) { /* ignore */ }
+
+    if (cached && Array.isArray(cached.scores)) {
+      applyFamousScores(cached.scores, cached.evalsCp || []);
+      if (statusEl) statusEl.textContent = "Cached";
+      updateFamousSliderPos(startPly, cached.scores, cached.evalsCp || []);
+    } else {
+      if (statusEl) statusEl.textContent = "Analyzing… (one-time)";
+      fetchFamousAnalysis(cacheKey, statusEl);
+    }
+
+    // Slider scrub
+    if (slider) {
+      slider.addEventListener("input", () => {
+        const idx = Number(slider.value);
+        const scores = famousChart ? famousChart.data.datasets[0].data : [];
+        // Try to pull evalsCp from the cache
+        let evalsCp = [];
+        try {
+          const raw = localStorage.getItem(cacheKey);
+          if (raw) { const c = JSON.parse(raw); evalsCp = c.evalsCp || []; }
+        } catch (_) { /* ignore */ }
+        updateFamousSliderPos(idx, scores, evalsCp);
+      });
+    }
+  }
+
+  function parseFamousPgn(text) {
+    try {
+      const g = new Chess();
+      if (!g.load_pgn(text, { sloppy: true })) return null;
+      const history = g.history({ verbose: true });
+      const replay = new Chess();
+      const plies = [];
+      for (const mv of history) {
+        const fenBefore = replay.fen();
+        const san = replay.move({ from: mv.from, to: mv.to, promotion: mv.promotion }).san;
+        plies.push({ san, fen_before: fenBefore, fen_after: replay.fen() });
+      }
+      return plies;
+    } catch (_) { return null; }
+  }
+
+  function applyFamousScores(scores, evalsCp) {
+    if (!famousChart) return;
+    const labels = [];
+    const data = [];
+    for (let i = FAMOUS_PLY_START; i <= Math.min(FAMOUS_PLY_END, famousPlies.length - 1); i++) {
+      const ply = famousPlies[i];
+      const moveNum = Math.floor(i / 2) + 1;
+      const side = i % 2 === 0 ? "" : "…";
+      labels.push(`${moveNum}.${side}${ply.san}`);
+      data.push(scores[i] != null ? scores[i] : null);
+    }
+    famousChart.data.labels = labels;
+    famousChart.data.datasets[0].data = data;
+    famousChart.update("none");
+  }
+
+  function updateFamousSliderPos(idx, scores, evalsCp) {
+    if (idx < 0 || idx >= famousPlies.length) return;
+    const ply = famousPlies[idx];
+    if (famousBoard) famousBoard.position(ply.fen_before.split(" ")[0]);
+
+    const sanLabel = document.getElementById("famousSanLabel");
+    const evalLabel = document.getElementById("famousEvalLabel");
+    const volLabel = document.getElementById("famousVolLabel");
+
+    const moveNum = Math.floor(idx / 2) + 1;
+    const side = idx % 2 === 0 ? "." : "…";
+    if (sanLabel) sanLabel.textContent = `${moveNum}${side} ${ply.san}`;
+
+    if (evalLabel && evalsCp && evalsCp[idx] != null) {
+      const turn = ply.fen_before.split(/\s+/)[1] || "w";
+      evalLabel.textContent = formatEval(evalsCp[idx], turn);
+    } else if (evalLabel) {
+      evalLabel.textContent = "—";
+    }
+
+    const v = scores[idx];
+    if (volLabel) {
+      if (v != null) {
+        volLabel.textContent = Math.round(v).toString();
+        volLabel.dataset.color = scoreToColor(v);
+      } else {
+        volLabel.textContent = "—";
+        volLabel.dataset.color = "low";
+      }
+    }
+
+    // Highlight point on famous chart
+    if (famousChart) {
+      const chartIdx = idx - FAMOUS_PLY_START;
+      famousChart.data.datasets[0].pointRadius =
+        famousChart.data.datasets[0].data.map((_, i) => (i === chartIdx ? 5 : 1.5));
+      famousChart.update("none");
+    }
+  }
+
+  async function fetchFamousAnalysis(cacheKey, statusEl) {
+    try {
+      const resp = await fetch("/analyze/pgn", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pgn: FAMOUS_PGN, deep: false, max_plies: 56 }),
+      });
+      if (!resp.ok || !resp.body) throw new Error(`HTTP ${resp.status}`);
+
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      const splitRe = /\r\n\r\n|\n\n/;
+      const scores = [];
+      const evalsCp = [];
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        let m;
+        while ((m = splitRe.exec(buf))) {
+          const chunk = buf.slice(0, m.index);
+          buf = buf.slice(m.index + m[0].length);
+          // Parse SSE chunk
+          let event = "message";
+          const dataLines = [];
+          for (const line of chunk.split(/\r?\n/)) {
+            if (!line || line.startsWith(":")) continue;
+            if (line.startsWith("event:")) event = line.slice(6).trim();
+            else if (line.startsWith("data:")) dataLines.push(line.slice(5).trim());
+          }
+          if (!dataLines.length) continue;
+          let payload;
+          try { payload = JSON.parse(dataLines.join("\n")); } catch (_) { continue; }
+
+          if (event === "ply" && payload.ply) {
+            const p = payload.ply;
+            const i = p.ply - 1;
+            scores[i] = p.volatility && p.volatility.score != null ? p.volatility.score : null;
+            evalsCp[i] = p.eval_cp != null ? p.eval_cp : null;
+            // Update chart in-flight
+            applyFamousScores(scores, evalsCp);
+            if (statusEl) statusEl.textContent = `Analyzing… ${p.ply} plies`;
+          } else if (event === "done" && payload.plies) {
+            payload.plies.forEach((p, i) => {
+              scores[i] = p.volatility && p.volatility.score != null ? p.volatility.score : null;
+              evalsCp[i] = p.eval_cp != null ? p.eval_cp : null;
+            });
+            applyFamousScores(scores, evalsCp);
+          }
+        }
+      }
+
+      // Save to cache
+      try { localStorage.setItem(cacheKey, JSON.stringify({ scores, evalsCp })); } catch (_) { /* quota */ }
+      if (statusEl) statusEl.textContent = "Cached";
+    } catch (err) {
+      if (statusEl) statusEl.textContent = "Engine unavailable — no V trace";
+      console.warn("Famous game analysis failed:", err);
+    }
   }
 
   // ── Shared deep toggle state ──────────────────────────────────────────── //
@@ -209,7 +532,7 @@
     if (deepToggle && deepToggle !== source) deepToggle.checked = val;
     if (deepToggleGame && deepToggleGame !== source) deepToggleGame.checked = val;
   }
-  if (deepToggle)     deepToggle.addEventListener("change",     () => syncDeep(deepToggle));
+  if (deepToggle) deepToggle.addEventListener("change", () => syncDeep(deepToggle));
   if (deepToggleGame) deepToggleGame.addEventListener("change", () => syncDeep(deepToggleGame));
 
   function deepEnabled() {
@@ -223,7 +546,7 @@
     if (arrowToggleGame && arrowToggleGame !== source) arrowToggleGame.checked = val;
     refreshArrow();
   }
-  if (arrowToggle)     arrowToggle.addEventListener("change",     () => syncArrow(arrowToggle));
+  if (arrowToggle) arrowToggle.addEventListener("change", () => syncArrow(arrowToggle));
   if (arrowToggleGame) arrowToggleGame.addEventListener("change", () => syncArrow(arrowToggleGame));
 
   function arrowEnabled() {
@@ -245,7 +568,7 @@
   function ensureAudioResume() {
     const ctx = getAudioCtx();
     if (ctx && ctx.state === "suspended") {
-      ctx.resume().catch(() => {});
+      ctx.resume().catch(() => { });
     }
   }
   // Kick the autoplay gate on the very first interaction anywhere on the page.
@@ -262,7 +585,7 @@
     if (soundsToggle && soundsToggle !== source) soundsToggle.checked = val;
     if (soundsToggleEditor && soundsToggleEditor !== source) soundsToggleEditor.checked = val;
   }
-  if (soundsToggle)       soundsToggle.addEventListener("change",       () => syncSounds(soundsToggle));
+  if (soundsToggle) soundsToggle.addEventListener("change", () => syncSounds(soundsToggle));
   if (soundsToggleEditor) soundsToggleEditor.addEventListener("change", () => syncSounds(soundsToggleEditor));
 
   // Master bus — gives us a single output gain we can tame globally and a
@@ -292,12 +615,12 @@
     if (!ctx || !bus) return;
     const now = ctx.currentTime + startAt;
     const osc = ctx.createOscillator();
-    const g   = ctx.createGain();
+    const g = ctx.createGain();
     osc.type = type;
     osc.frequency.setValueAtTime(freq, now);
     g.gain.setValueAtTime(0.0001, now);
     g.gain.exponentialRampToValueAtTime(peakGain, now + 0.003);
-    g.gain.exponentialRampToValueAtTime(0.0001,   now + decay);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + decay);
     osc.connect(g).connect(bus);
     osc.start(now);
     osc.stop(now + decay + 0.02);
@@ -312,7 +635,7 @@
     if (!ctx || !bus) return;
     const now = ctx.currentTime + startAt;
     const size = Math.max(1, Math.floor(ctx.sampleRate * duration));
-    const buf  = ctx.createBuffer(1, size, ctx.sampleRate);
+    const buf = ctx.createBuffer(1, size, ctx.sampleRate);
     const data = buf.getChannelData(0);
     for (let i = 0; i < size; i++) {
       // Sharp attack envelope inside the buffer — grows and fades fast.
@@ -338,8 +661,8 @@
   // plus three modal partials forming a wooden body: low body, mid grain,
   // high snap. Keeps total energy short (~140ms) so it doesn't feel sluggish.
   function soundMove() {
-    playNoise  ({ duration: 0.020, centerFreq: 2400, Q: 0.9, gain: 0.16 });
-    playNoise  ({ duration: 0.040, centerFreq:  900, Q: 1.4, gain: 0.10 });
+    playNoise({ duration: 0.020, centerFreq: 2400, Q: 0.9, gain: 0.16 });
+    playNoise({ duration: 0.040, centerFreq: 900, Q: 1.4, gain: 0.10 });
     playPartial(150, 0.16, 0.090);
     playPartial(420, 0.10, 0.080);
     playPartial(880, 0.06, 0.050);
@@ -348,9 +671,9 @@
   // Heavier, lower-pitched relative of the move sound — think "thunk" instead
   // of "tock". Adds a sub-bass thump and a slightly grittier transient.
   function soundCapture() {
-    playNoise  ({ duration: 0.030, centerFreq: 1800, Q: 0.8, gain: 0.18 });
-    playNoise  ({ duration: 0.060, centerFreq:  450, Q: 1.0, gain: 0.22, startAt: 0.005 });
-    playPartial( 90, 0.22, 0.140);
+    playNoise({ duration: 0.030, centerFreq: 1800, Q: 0.8, gain: 0.18 });
+    playNoise({ duration: 0.060, centerFreq: 450, Q: 1.0, gain: 0.22, startAt: 0.005 });
+    playPartial(90, 0.22, 0.140);
     playPartial(220, 0.16, 0.110);
     playPartial(560, 0.08, 0.060);
     playPartial(1100, 0.04, 0.040);
@@ -359,7 +682,7 @@
   // Bright two-note alert — the upward perfect-fifth lift signals "watch
   // out" without crossing into doorbell territory. Triangle adds warmth.
   function soundCheck() {
-    playPartial(880,  0.18, 0.220, 0.000, "triangle");
+    playPartial(880, 0.18, 0.220, 0.000, "triangle");
     playPartial(1320, 0.10, 0.260, 0.000, "sine");
     playPartial(1320, 0.16, 0.220, 0.110, "triangle");
     playPartial(1980, 0.08, 0.260, 0.110, "sine");
@@ -375,7 +698,7 @@
     playPartial(784, 0.10, 0.32, 0.18, "sine");
     playPartial(330, 0.24, 0.55, 0.40, "triangle");
     playPartial(165, 0.30, 0.70, 0.40, "sine");
-    playNoise  ({ duration: 0.25, centerFreq: 110, Q: 2, gain: 0.20, startAt: 0.40 });
+    playNoise({ duration: 0.25, centerFreq: 110, Q: 2, gain: 0.20, startAt: 0.40 });
   }
 
   function classifyMove(san) {
@@ -391,9 +714,9 @@
     ensureAudioResume();
     switch (classifyMove(san)) {
       case "checkmate": soundCheckmate(); break;
-      case "check":     soundCheck();     break;
-      case "capture":   soundCapture();   break;
-      default:          soundMove();      break;
+      case "check": soundCheck(); break;
+      case "capture": soundCapture(); break;
+      default: soundMove(); break;
     }
   }
 
@@ -402,7 +725,7 @@
 
   // Hoisted shared state for the analyze/invalidate helpers below. These are
   // consumed by scheduleAutoAnalyze() and analyzeFen() later in the module.
-  let autoTimer   = null;
+  let autoTimer = null;
   let inflightFen = null;
 
   // Single source of truth for "the board changed; any pending or in-flight
@@ -423,11 +746,11 @@
   }
 
   const board = Chessboard("board", {
-    draggable:    true,
-    sparePieces:  true,
+    draggable: true,
+    sparePieces: true,
     dropOffBoard: "trash",
-    position:     "start",
-    pieceTheme:   "/vendor/img/pieces/{piece}.png",
+    position: "start",
+    pieceTheme: "/vendor/img/pieces/{piece}.png",
     // NOTE: we intentionally do NOT auto-flip the side-to-move on drop. The
     // explicit White/Black segmented control owns turn state. Auto-flipping
     // conflated "set up pieces" with "play a move" and was a frequent source
@@ -442,15 +765,15 @@
     // are setup actions, not "moves"). Using oldPos lets us distinguish a
     // capture (target was occupied by a different piece) from a quiet move.
     onDrop: (source, target, piece, _newPos, oldPos) => {
-      if (!soundsEnabled())              return;
-      if (suppressSync)                  return;  // programmatic position set
-      if (source === "spare")            return;  // dragged from spare tray
+      if (!soundsEnabled()) return;
+      if (suppressSync) return;  // programmatic position set
+      if (source === "spare") return;  // dragged from spare tray
       if (target === "offboard" || target === "trash") return;
-      if (source === target)             return;  // snap-back (illegal/no-op)
+      if (source === target) return;  // snap-back (illegal/no-op)
       ensureAudioResume();
       const captured = oldPos && oldPos[target] && oldPos[target] !== piece;
       if (captured) soundCapture();
-      else          soundMove();
+      else soundMove();
     },
   });
 
@@ -478,9 +801,9 @@
     let next = null;
     switch (e.key) {
       case "ArrowRight": next = Math.min(last, (currentPlyIdx < 0 ? -1 : currentPlyIdx) + 1); break;
-      case "ArrowLeft":  next = Math.max(0,    (currentPlyIdx < 0 ?  1 : currentPlyIdx) - 1); break;
-      case "Home":       next = 0; break;
-      case "End":        next = last; break;
+      case "ArrowLeft": next = Math.max(0, (currentPlyIdx < 0 ? 1 : currentPlyIdx) - 1); break;
+      case "Home": next = 0; break;
+      case "End": next = last; break;
       default: return;
     }
     e.preventDefault();
@@ -715,9 +1038,9 @@
     }
 
     const score = result.score;
-    const fill  = Math.max(0, Math.min(1, score / 100));
+    const fill = Math.max(0, Math.min(1, score / 100));
     volBarEl.style.setProperty("--fill", fill);
-    volBarEl.dataset.color   = scoreToColor(score);
+    volBarEl.dataset.color = scoreToColor(score);
     volBarEl.dataset.decided = result.decided ? "true" : "false";
 
     const deep = result.recurse_depth_used > 0 && result.raw_cp > 0 && result.local_raw_cp != null;
@@ -741,16 +1064,16 @@
   // Pretty labels for pattern badges. Names match `chess_vol.explain`
   // PATTERN_* constants — keep in sync if those identifiers change.
   const PATTERN_LABELS = {
-    only_move:        "only move",
-    checkmate:        "checkmate",
-    stalemate:        "stalemate",
-    mate_available:   "mate available",
-    decided:          "decided",
-    knife_edge:       "knife edge",
-    few_good_moves:   "few good moves",
-    forgiving:        "forgiving",
-    reply_dominates:  "reply dominates",
-    scale_dampened:   "winning · dampened",
+    only_move: "only move",
+    checkmate: "checkmate",
+    stalemate: "stalemate",
+    mate_available: "mate available",
+    decided: "decided",
+    knife_edge: "knife edge",
+    few_good_moves: "few good moves",
+    forgiving: "forgiving",
+    reply_dominates: "reply dominates",
+    scale_dampened: "winning · dampened",
     defensive_crisis: "defensive crisis",
   };
 
@@ -952,7 +1275,7 @@
     const r = el.getBoundingClientRect();
     return {
       x: r.left - frameRect.left + r.width / 2,
-      y: r.top  - frameRect.top  + r.height / 2,
+      y: r.top - frameRect.top + r.height / 2,
       size: r.width,
     };
   }
@@ -965,7 +1288,7 @@
   function drawArrow(uci) {
     if (!arrowLayer || !uci || uci.length < 4) { clearArrow(); return; }
     const from = uci.slice(0, 2);
-    const to   = uci.slice(2, 4);
+    const to = uci.slice(2, 4);
     const a = squareCenter(from);
     const b = squareCenter(to);
     if (!a || !b) { clearArrow(); return; }
@@ -977,9 +1300,9 @@
     const ux = dx / len;
     const uy = dy / len;
 
-    const sq    = a.size;
-    const w     = Math.max(6,  sq * 0.18);
-    const head  = Math.max(10, sq * 0.34);
+    const sq = a.size;
+    const w = Math.max(6, sq * 0.18);
+    const head = Math.max(10, sq * 0.34);
     const inset = sq * 0.22;
 
     const sx = a.x + ux * inset;
@@ -990,7 +1313,7 @@
     const shaftEndX = ex - ux * head;
     const shaftEndY = ey - uy * head;
 
-    const px =  uy;
+    const px = uy;
     const py = -ux;
 
     const hw = w * 0.5;
@@ -1096,6 +1419,24 @@
     editorStatus.textContent = "Analyzing…";
     setBarsLoading(true);
 
+    let fullArrived = false;
+
+    // Fast eval probe — shallow depth, no recursion → ~50ms.
+    // Shows the eval bar instantly while the full analysis runs.
+    const quickEval = fetch("/analyze/fen", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fen, deep: false, depth: 8, multipv: 1, recurse_depth: 0 }),
+      signal: ctrl.signal,
+    }).then(async (resp) => {
+      if (!resp.ok || ctrl.signal.aborted || ctrl !== inflightFen) return;
+      const data = await resp.json();
+      if (fullArrived || ctrl.signal.aborted || ctrl !== inflightFen) return;
+      const turn = fen.trim().split(/\s+/)[1] || "w";
+      renderEvalBar(data.volatility.best_eval_cp, turn);
+      editorStatus.textContent = "Eval ready · computing volatility…";
+    }).catch(() => { /* swallow — full request is the source of truth */ });
+
     try {
       const resp = await fetch("/analyze/fen", {
         method: "POST",
@@ -1105,6 +1446,7 @@
       });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${await resp.text()}`);
       const data = await resp.json();
+      fullArrived = true;
       // Stale-response guard: if the user edited the board (or a newer
       // analysis started) while this request was in flight, our controller
       // was replaced in inflightFen and/or aborted. Do not let this response
@@ -1131,19 +1473,19 @@
   }
 
   // ── PGN / Game ───────────────────────────────────────────────────────── //
-  let loadedPlies   = [];
-  let plyResults    = [];
+  let loadedPlies = [];
+  let plyResults = [];
   let currentPlyIdx = -1;
-  let chart         = null;
+  let chart = null;
   let pgnController = null;
 
   function resetGame() {
     loadedPlies = [];
-    plyResults  = [];
+    plyResults = [];
     currentPlyIdx = -1;
     moveListEl.innerHTML = "";
-    gameStatus.textContent  = "";
-    plyStatus.textContent   = "";
+    gameStatus.textContent = "";
+    plyStatus.textContent = "";
     chartWrap.classList.add("hidden");
     moveListWrap.classList.add("hidden");
     if (gameStatsEl) gameStatsEl.classList.add("hidden");
@@ -1151,19 +1493,23 @@
     clearTopLinesLists();
     setTopMove(null);
     destroyChart();
+    // Clear heat band
+    const hb = document.getElementById("heatBand");
+    if (hb) { hb.innerHTML = ""; hb.classList.add("hidden"); }
     lastVolJson = null;
     lastClassificationJson = null;
     clearExplainPanels(
       "Load and analyze a game to see why each move's volatility is what it is.",
     );
+    expandPgnDrawer();
   }
 
   // ── Game stats (accuracy + avg volatility) ───────────────────────────── //
   function resetGameStats() {
     if (statWhiteAcc) statWhiteAcc.textContent = "—";
     if (statBlackAcc) statBlackAcc.textContent = "—";
-    if (statAvgVol)   statAvgVol.textContent   = "—";
-    if (statAvgVol)   statAvgVol.removeAttribute("data-color");
+    if (statAvgVol) statAvgVol.textContent = "—";
+    if (statAvgVol) statAvgVol.removeAttribute("data-color");
     if (statClassWhite) statClassWhite.textContent = "White: —";
     if (statClassBlack) statClassBlack.textContent = "Black: —";
   }
@@ -1248,8 +1594,8 @@
       const g = new Chess();
       if (!g.load_pgn(text, { sloppy: true })) return null;
       const history = g.history({ verbose: true });
-      const replay  = new Chess();
-      const plies   = [];
+      const replay = new Chess();
+      const plies = [];
       for (const mv of history) {
         const fenBefore = replay.fen();
         const san = replay.move({ from: mv.from, to: mv.to, promotion: mv.promotion }).san;
@@ -1292,17 +1638,17 @@
 
   function makeMoveCell(idx) {
     const ply = loadedPlies[idx];
-    const td  = document.createElement("td");
-    td.className    = "move-cell";
-    td.dataset.idx  = String(idx);
+    const td = document.createElement("td");
+    td.className = "move-cell";
+    td.dataset.idx = String(idx);
 
     const sanSpan = document.createElement("span");
-    sanSpan.className   = "move-san";
+    sanSpan.className = "move-san";
     sanSpan.textContent = ply.san;
 
     const vSpan = document.createElement("span");
     vSpan.className = "move-vscore";
-    vSpan.id        = `mv-v-${idx}`;
+    vSpan.id = `mv-v-${idx}`;
     vSpan.textContent = "—";
 
     const classSpan = document.createElement("span");
@@ -1321,13 +1667,18 @@
     const primaryGlyphs = {
       brilliant: "!!",
       great: "!",
+      best: "✓",
+      inaccuracy: "?!",
       mistake: "?",
       blunder: "??",
     };
     const secondaryGlyphs = {
       routine_miss: "⚠",
+      critical_miss: "✗",
       practical: "↑",
       simplification: "↓",
+      defusal: "⊘",
+      complication: "⚡",
     };
     const primary = primaryGlyphs[classification.primary];
     const secondary = secondaryGlyphs[classification.secondary];
@@ -1408,11 +1759,20 @@
     }
 
     if (chart) {
+      chart.$currentIdx = idx;
       chart.data.datasets.forEach((ds) => {
         ds.pointRadius = ds.data.map((_, i) => (i === idx ? 5 : 2));
         ds.pointHoverRadius = ds.data.map((_, i) => (i === idx ? 7 : 4));
       });
       chart.update("none");
+    }
+
+    // Heat band — highlight active cell
+    const heatBand = document.getElementById("heatBand");
+    if (heatBand) {
+      heatBand.querySelectorAll(".active").forEach(c => c.classList.remove("active"));
+      const cell = heatBand.children[idx];
+      if (cell) cell.classList.add("active");
     }
 
     // The board now shows the position reached AFTER loadedPlies[idx-1] was
@@ -1421,6 +1781,47 @@
     if (prevIdx !== idx && idx > 0) {
       playMoveSound(loadedPlies[idx - 1].san);
     }
+  }
+
+  // ── PGN drawer (collapsible) ─────────────────────────────────────────── //
+  const pgnDrawer = document.getElementById("pgnDrawer");
+  const pgnDrawerToggle = document.getElementById("pgnDrawerToggle");
+  const pgnDrawerSummary = document.getElementById("pgnDrawerSummary");
+
+  function extractPgnNames(text) {
+    const wm = text.match(/\[White\s+"([^"]*)"\]/);
+    const bm = text.match(/\[Black\s+"([^"]*)"\]/);
+    return {
+      white: wm ? wm[1] : "White",
+      black: bm ? bm[1] : "Black",
+    };
+  }
+
+  function collapsePgnDrawer(pgnText, plyCount) {
+    if (!pgnDrawer) return;
+    const { white, black } = extractPgnNames(pgnText || "");
+    const moves = Math.ceil((plyCount || 0) / 2);
+    pgnDrawerSummary.textContent = `${white} vs ${black} · ${moves} move${moves !== 1 ? "s" : ""}`;
+    pgnDrawer.classList.add("collapsed");
+  }
+
+  function expandPgnDrawer() {
+    if (!pgnDrawer) return;
+    pgnDrawer.classList.remove("collapsed");
+    pgnDrawerSummary.textContent = "Load a PGN to begin";
+  }
+
+  function togglePgnDrawer() {
+    if (!pgnDrawer) return;
+    if (pgnDrawer.classList.contains("collapsed")) {
+      pgnDrawer.classList.remove("collapsed");
+    } else {
+      pgnDrawer.classList.add("collapsed");
+    }
+  }
+
+  if (pgnDrawerToggle) {
+    pgnDrawerToggle.addEventListener("click", togglePgnDrawer);
   }
 
   // ── PGN load / analyze ───────────────────────────────────────────────── //
@@ -1438,6 +1839,7 @@
     renderMoveList();
     gameStatus.textContent = `Loaded ${plies.length} plies — click Analyze to compute volatility.`;
     if (plies.length) jumpToPly(0);
+    collapsePgnDrawer(text, plies.length);
   });
 
   pgnFileInput.addEventListener("change", async () => {
@@ -1452,6 +1854,7 @@
       const plies = parsePgn(text);
       if (plies) { loadedPlies = plies; renderMoveList(); }
     }
+    collapsePgnDrawer(text, loadedPlies.length);
     startPgnStream(text);
   });
 
@@ -1467,7 +1870,7 @@
     destroyChart();
 
     btnAnalyzePgn.disabled = true;
-    btnStopPgn.disabled    = false;
+    btnStopPgn.disabled = false;
     gameStatus.textContent = "Starting…";
     plyStatus.classList.remove("hidden");
 
@@ -1488,14 +1891,14 @@
       }
     } finally {
       btnAnalyzePgn.disabled = false;
-      btnStopPgn.disabled    = true;
+      btnStopPgn.disabled = true;
       if (pgnController === ctrl) pgnController = null;
     }
   }
 
   // ── SSE streaming ────────────────────────────────────────────────────── //
   async function consumeSse(stream, ctrl) {
-    const reader  = stream.getReader();
+    const reader = stream.getReader();
     const decoder = new TextDecoder();
     let buf = "";
     const splitRe = /\r\n\r\n|\n\n/;
@@ -1511,7 +1914,7 @@
         handleChunk(chunk);
       }
       if (ctrl.signal.aborted) {
-        try { reader.cancel(); } catch (_) {}
+        try { reader.cancel(); } catch (_) { }
         return;
       }
     }
@@ -1529,7 +1932,7 @@
     let payload;
     try { payload = JSON.parse(dataLines.join("\n")); } catch (_) { return; }
     if (event === "start") onStart(payload);
-    else if (event === "ply")  onPly(payload);
+    else if (event === "ply") onPly(payload);
     else if (event === "done") onDone(payload);
     else if (event === "error") onErr(payload);
   }
@@ -1565,6 +1968,19 @@
         updateMoveVol(i, ply.volatility && ply.volatility.score);
         updateMoveClassification(i, ply.classification);
       });
+      // Rebuild heat band from full results
+      const hb = document.getElementById("heatBand");
+      if (hb) {
+        hb.innerHTML = "";
+        p.plies.forEach((ply, i) => {
+          const d = document.createElement("div");
+          const v = ply.volatility && ply.volatility.score;
+          d.dataset.color = v != null ? scoreToColor(v) : "none";
+          d.addEventListener("click", () => jumpToPly(i));
+          hb.appendChild(d);
+        });
+        hb.classList.remove("hidden");
+      }
       recomputeGameStats();
       if (currentPlyIdx >= 0) jumpToPly(currentPlyIdx);
     }
@@ -1635,7 +2051,7 @@
       libraryGames = await window.ChessVolLibrary.getAllGames();
     } catch (err) {
       libraryTableBody.innerHTML =
-        `<tr><td colspan="10" class="library-empty">Library unavailable: ${err.message || err}</td></tr>`;
+        `<tr><td colspan="12" class="library-empty">Library unavailable: ${err.message || err}</td></tr>`;
       return;
     }
 
@@ -1644,7 +2060,7 @@
     if (!games.length) {
       const tr = document.createElement("tr");
       const td = document.createElement("td");
-      td.colSpan = 10;
+      td.colSpan = 12;
       td.className = "library-empty";
       td.textContent = libraryGames.length ? "No games match these filters." : "No saved games yet.";
       tr.appendChild(td);
@@ -1659,7 +2075,9 @@
       const cells = [
         new Date(game.importedAt).toLocaleString(),
         meta.white || "Unknown",
+        meta.whiteElo || "—",
         meta.black || "Unknown",
+        meta.blackElo || "—",
         meta.result || "*",
         String((game.report && game.report.plies || []).length),
         fmtNumber(stats.avgV),
@@ -1714,6 +2132,7 @@
   function openSavedGame(game) {
     resetGame();
     pgnInput.value = game.pgn || "";
+    collapsePgnDrawer(game.pgn, (game.report.plies || []).length);
     loadedPlies = (game.report.plies || []).map((ply) => ({
       san: ply.san,
       fen_before: ply.fen_before,
@@ -1820,6 +2239,50 @@
     }
   }
 
+  // ── Paste PGN import ────────────────────────────────────────────────── //
+  async function importPastedPgn() {
+    const textarea = document.getElementById("libraryPgnInput");
+    if (!textarea) return;
+    const text = textarea.value.trim();
+    if (!text) {
+      setLibraryProgress("Paste a PGN first.");
+      return;
+    }
+    try {
+      const games = window.ChessVolLibrary.splitPgnGames(text);
+      if (!games.length) {
+        setLibraryProgress("Could not find any games in the pasted text.");
+        return;
+      }
+      for (let i = 0; i < games.length; i++) {
+        const pgn = games[i];
+        const meta = window.ChessVolLibrary.gameRecordFromReport(
+          pgn,
+          { mode: "pending", params: {}, plies: [] },
+          `paste#${i + 1}`,
+        ).metadata;
+        setLibraryProgress(`Analyzing ${i + 1}/${games.length}: ${meta.white} - ${meta.black}`);
+        const report = await analyzePgnForLibrary(pgn, (progress) => {
+          setLibraryProgress(
+            `Analyzing ${i + 1}/${games.length}: ${meta.white} - ${meta.black} (${progress.done}/${progress.total})`,
+          );
+        });
+        const record = window.ChessVolLibrary.gameRecordFromReport(pgn, report, `paste#${i + 1}`);
+        await window.ChessVolLibrary.putGame(record);
+      }
+      setLibraryProgress(`Imported ${games.length} game${games.length === 1 ? "" : "s"} from paste.`);
+      textarea.value = "";
+      await refreshLibraryTable();
+    } catch (err) {
+      setLibraryProgress(`Import failed: ${err.message || err}`);
+    }
+  }
+
+  const btnLibraryPaste = document.getElementById("btnLibraryPaste");
+  if (btnLibraryPaste) {
+    btnLibraryPaste.addEventListener("click", importPastedPgn);
+  }
+
   if (libraryFileInput) {
     libraryFileInput.addEventListener("change", async () => {
       await importLibraryFiles(libraryFileInput.files);
@@ -1856,23 +2319,71 @@
   });
 
   // ── Chart ────────────────────────────────────────────────────────────── //
+
+  // D2 — Vertical dashed line + subtle glow at the current ply
+  const verticalLinePlugin = {
+    id: "verticalLine",
+    afterDatasetsDraw(chart) {
+      const idx = chart.$currentIdx;
+      if (idx == null || idx < 0) return;
+      const meta = chart.getDatasetMeta(0);
+      const point = meta.data[idx];
+      if (!point) return;
+      const { ctx, chartArea } = chart;
+      ctx.save();
+      ctx.strokeStyle = "rgba(57, 255, 20, 0.55)";
+      ctx.lineWidth = 1.2;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(point.x, chartArea.top);
+      ctx.lineTo(point.x, chartArea.bottom);
+      ctx.stroke();
+      // Subtle glow ring around the active point
+      const phase = chart.$pulsePhase || 0;
+      const radius = 6 + 3 * Math.sin(phase);
+      const alpha = 0.25 + 0.15 * Math.sin(phase);
+      ctx.beginPath();
+      ctx.setLineDash([]);
+      ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(57, 255, 20, ${alpha})`;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.restore();
+    },
+  };
+
+  // Pulse animation loop — updates chart.$pulsePhase at ~1.5 Hz
+  let pulseRaf = null;
+  function startPulse() {
+    if (pulseRaf) return;
+    let last = performance.now();
+    function tick(now) {
+      pulseRaf = requestAnimationFrame(tick);
+      if (!chart) return;
+      const dt = (now - last) / 1000;
+      last = now;
+      chart.$pulsePhase = ((chart.$pulsePhase || 0) + dt * Math.PI * 3) % (Math.PI * 2);
+      // Only redraw if a ply is selected
+      if (chart.$currentIdx != null && chart.$currentIdx >= 0) {
+        chart.draw();
+      }
+    }
+    pulseRaf = requestAnimationFrame(tick);
+  }
+
   function ensureChart() {
     if (chart) return chart;
 
-    Chart.defaults.color          = "#8a8a8a";
-    Chart.defaults.borderColor    = "#262626";
-    Chart.defaults.font.family    = "system-ui, sans-serif";
-    Chart.defaults.font.size      = 11;
+    Chart.defaults.color = "#8a8a8a";
+    Chart.defaults.borderColor = "#262626";
+    Chart.defaults.font.family = "system-ui, sans-serif";
+    Chart.defaults.font.size = 11;
 
     const ctx = chartCanvas.getContext("2d");
 
-    const volGrad = ctx.createLinearGradient(0, 0, 0, 220);
-    volGrad.addColorStop(0,   "rgba(224, 68, 58, 0.38)");
-    volGrad.addColorStop(0.45,"rgba(224, 179, 48, 0.22)");
-    volGrad.addColorStop(1,   "rgba(57, 255, 20, 0.10)");
-
     chart = new Chart(ctx, {
       type: "line",
+      plugins: [verticalLinePlugin],
       data: {
         labels: [],
         datasets: [
@@ -1881,13 +2392,13 @@
             data: [],
             yAxisID: "yV",
             borderColor: "#39ff14",
-            backgroundColor: volGrad,
-            borderWidth: 1.8,
-            pointRadius: 2,
-            pointHoverRadius: 5,
+            backgroundColor: "rgba(57,255,20,0.08)",
             pointBackgroundColor: "#39ff14",
+            borderWidth: 2,
+            pointRadius: 2.5,
+            pointHoverRadius: 5,
             tension: 0.3,
-            fill: true,
+            fill: false,
             spanGaps: true,
           },
           {
@@ -1907,10 +2418,10 @@
         ],
       },
       options: {
-        responsive:          true,
+        responsive: true,
         maintainAspectRatio: false,
-        animation:           { duration: 0 },
-        interaction:         { mode: "index", intersect: false },
+        animation: { duration: 0 },
+        interaction: { mode: "index", intersect: false },
         onClick: (_evt, elements) => {
           if (elements && elements.length) jumpToPly(elements[0].index);
         },
@@ -1920,11 +2431,11 @@
           },
           tooltip: {
             backgroundColor: "#141414",
-            borderColor:     "#39ff14",
-            borderWidth:     1,
-            titleColor:      "#ececec",
-            bodyColor:       "#a0a0a0",
-            padding:         10,
+            borderColor: "#39ff14",
+            borderWidth: 1,
+            titleColor: "#ececec",
+            bodyColor: "#a0a0a0",
+            padding: 10,
             callbacks: {
               label: (ctx) =>
                 `${ctx.dataset.label}: ${ctx.parsed.y != null ? ctx.parsed.y.toFixed(1) : "—"}`,
@@ -1948,7 +2459,7 @@
             title: { display: true, text: "Eval (cp)", color: "#6aa3ff", font: { size: 10 } },
           },
           x: {
-            grid:  { color: "rgba(255,255,255,0.04)" },
+            grid: { color: "rgba(255,255,255,0.04)" },
             ticks: {
               color: "#6a6a6a",
               maxRotation: 45,
@@ -1959,6 +2470,7 @@
         },
       },
     });
+    startPulse();
     return chart;
   }
 
@@ -1966,11 +2478,24 @@
     ensureChart();
     const label = `${plyJson.ply}. ${plyJson.san}`;
     chart.data.labels.push(label);
-    chart.data.datasets[0].data.push(plyJson.volatility.score ?? null);
-    const turn   = plyJson.fen_before.split(/\s+/)[1] || "w";
+    // Single volatility line (dataset 0) + Eval (dataset 1)
+    const vScore = plyJson.volatility.score ?? null;
+    chart.data.datasets[0].data.push(vScore);
+    const turn = plyJson.fen_before.split(/\s+/)[1] || "w";
     const cpWhite = turn === "b" ? -plyJson.eval_cp : plyJson.eval_cp;
     chart.data.datasets[1].data.push(cpWhite);
     chart.update("none");
+
+    // D3 — heat band: append a cell
+    const hb = document.getElementById("heatBand");
+    if (hb) {
+      const d = document.createElement("div");
+      d.dataset.color = vScore != null ? scoreToColor(vScore) : "none";
+      const idx = plyJson.ply - 1;
+      d.addEventListener("click", () => jumpToPly(idx));
+      hb.appendChild(d);
+      hb.classList.remove("hidden");
+    }
   }
 
   // ── Bootstrap ────────────────────────────────────────────────────────── //

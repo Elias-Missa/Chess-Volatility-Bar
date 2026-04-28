@@ -2,10 +2,13 @@ README.md
 pyproject.toml
 src/chess_vol/__init__.py
 src/chess_vol/analyze.py
+src/chess_vol/calibrate.py
+src/chess_vol/classify.py
 src/chess_vol/cli.py
 src/chess_vol/cli_report.py
 src/chess_vol/config.py
 src/chess_vol/engine.py
+src/chess_vol/explain.py
 src/chess_vol/py.typed
 src/chess_vol/server.py
 src/chess_vol/volatility.py
@@ -16,8 +19,11 @@ src/chess_vol.egg-info/entry_points.txt
 src/chess_vol.egg-info/requires.txt
 src/chess_vol.egg-info/top_level.txt
 tests/test_analyze.py
+tests/test_calibrate.py
+tests/test_classify.py
 tests/test_cli.py
 tests/test_engine.py
+tests/test_explain.py
 tests/test_mate_handling.py
 tests/test_server.py
 tests/test_volatility.py

@@ -94,6 +94,10 @@ Manual smoke test plan:
       date: h.Date || "",
       event: h.Event || "",
       site: h.Site || "",
+      whiteElo: h.WhiteElo || "",
+      blackElo: h.BlackElo || "",
+      timeControl: h.TimeControl || "",
+      termination: h.Termination || "",
     };
   }
 
