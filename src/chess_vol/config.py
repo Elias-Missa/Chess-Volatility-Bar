@@ -71,6 +71,15 @@ DECIDED_BEST_CP: Final[float] = 800.0
 DECIDED_ALT_CP: Final[float] = 400.0
 """``|e_2|`` must also exceed this for ``decided=True``."""
 
+RECAPTURE_DAMPEN: Final[float] = 1.0 / 3.0
+"""Multiplier applied to ``V_local`` when the side-to-move is in a forced
+recapture (opponent just captured on square S, best move recaptures on S).
+
+Forced recaptures spuriously inflate volatility: every non-recapture move
+loses material, producing a knife-edge drop pattern even though the player
+has no real choice. Dampening pulls the bar back down so trades read as
+the calm sequences they are."""
+
 # --- §3.6 Color mapping ----------------------------------------------------
 
 COLOR_LOW_MAX: Final[float] = 25.0

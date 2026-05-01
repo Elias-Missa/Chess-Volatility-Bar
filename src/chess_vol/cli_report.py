@@ -66,6 +66,7 @@ class VolatilityJson(TypedDict):
     alt_evals_cp: list[int]
     scale: float
     decided: bool
+    recapture: bool
     reason: str | None
     recurse_depth_used: int
     analyses: int
@@ -172,6 +173,7 @@ def volatility_to_json(result: VolatilityResult) -> VolatilityJson:
         alt_evals_cp=list(result.alt_evals_cp),
         scale=result.scale,
         decided=result.decided,
+        recapture=result.recapture,
         reason=result.reason,
         recurse_depth_used=result.recurse_depth_used,
         analyses=result.analyses,

@@ -382,3 +382,115 @@ class TestTopLines:
         assert ucis[1] == "d2d4"
         # All 6 root lines present — child top_lines are discarded internally.
         assert len(result.top_lines) == 6
+
+
+# --------------------------------------------------------------------------- #
+# Forced-recapture dampening                                                   #
+# --------------------------------------------------------------------------- #
+
+
+class TestRecaptureDampening:
+    """When the opponent just captured and our best move recaptures on the
+    same square, every alternative loses material — V_local should be dampened
+    by ``RECAPTURE_DAMPEN`` (config) so trades don't read as knife edges."""
+
+    @staticmethod
+    def _trade_position() -> tuple[chess.Board, chess.Move, chess.Move]:
+        """Build 1.e4 d5 2.exd5 — Black to move, recapture on d5 is Qxd5.
+        Returns ``(board, recapture_move, non_recapture_move)``."""
+        board = chess.Board()
+        board.push_san("e4")
+        board.push_san("d5")
+        board.push_san("exd5")
+        recapture = board.parse_san("Qxd5")
+        non_recapture = board.parse_san("Nf6")
+        assert board.is_capture(recapture)
+        assert recapture.to_square == board.peek().to_square
+        return board, recapture, non_recapture
+
+    def test_recapture_flag_fires_and_dampens(self) -> None:
+        board, recapture, other = self._trade_position()
+        # Best PV begins with Qxd5 → recapture rule fires.
+        infos = evals_to_infos(
+            [0, -300, -350, -400, -500, -600],
+            turn=chess.BLACK,
+            moves=[recapture, other, other, other, other, other],
+        )
+        engine = FakeEngine(scripts=[infos])
+        result = compute_volatility(board, engine)
+        assert result.recapture is True
+        assert result.score is not None
+
+    def test_dampened_score_smaller_than_undampened_control(self) -> None:
+        """Same eval pattern, but the best PV is *not* a recapture — control
+        case. Dampened V should be strictly less than the control."""
+        board_dampened, recapture, other = self._trade_position()
+        infos_dampened = evals_to_infos(
+            [0, -300, -350, -400, -500, -600],
+            turn=chess.BLACK,
+            moves=[recapture, other, other, other, other, other],
+        )
+        result_dampened = compute_volatility(
+            board_dampened, FakeEngine(scripts=[infos_dampened])
+        )
+
+        # Control: same evals on a fresh board with no capture in move stack.
+        board_control = chess.Board()
+        infos_control = evals_to_infos([0, -300, -350, -400, -500, -600])
+        result_control = compute_volatility(board_control, FakeEngine(scripts=[infos_control]))
+
+        assert result_dampened.recapture is True
+        assert result_control.recapture is False
+        assert result_dampened.score is not None
+        assert result_control.score is not None
+        assert result_dampened.score < result_control.score
+        # Dampened raw should be ~1/3 of the control raw (RECAPTURE_DAMPEN).
+        assert result_dampened.local_raw_cp is not None
+        assert result_control.local_raw_cp is not None
+        ratio = result_dampened.local_raw_cp / result_control.local_raw_cp
+        assert ratio == pytest.approx(1.0 / 3.0, abs=1e-6)
+
+    def test_no_dampening_when_best_move_is_not_a_recapture(self) -> None:
+        """Last move was a capture, but the best move is something else (e.g.
+        a counterattacking zwischenzug). The rule must not fire."""
+        board, recapture, other = self._trade_position()
+        # Best PV is Nf6 (not a recapture); recapture is the *second* line.
+        infos = evals_to_infos(
+            [0, -300, -350, -400, -500, -600],
+            turn=chess.BLACK,
+            moves=[other, recapture, other, other, other, other],
+        )
+        result = compute_volatility(board, FakeEngine(scripts=[infos]))
+        assert result.recapture is False
+
+    def test_no_dampening_when_no_prior_move(self) -> None:
+        """A position with an empty move stack (loaded from FEN) has no
+        recapture context. The rule never fires regardless of PV shape."""
+        board = chess.Board()  # startpos, empty move_stack
+        moves = list(board.legal_moves)[:6]
+        infos = evals_to_infos([0, -300, -350, -400, -500, -600], moves=moves)
+        result = compute_volatility(board, FakeEngine(scripts=[infos]))
+        assert result.recapture is False
+
+    def test_no_dampening_when_prior_move_is_quiet(self) -> None:
+        """Prior move was not a capture (e.g. a quiet developing move). Even if
+        the best move happens to be a capture, the recapture rule shouldn't
+        fire — it's about *responding to* a capture, not initiating one."""
+        board = chess.Board()
+        board.push_san("e4")
+        board.push_san("e5")
+        board.push_san("Nf3")  # quiet, not a capture
+        # Pretend Black's best is Nxe4-style (won't actually be legal here, so
+        # use a legal quiet move for the PV head — the point is "best PV's
+        # to_square == last move's to_square but last move wasn't a capture").
+        # Last move's to_square is f3; pick a Black move whose to_square is f3:
+        # there is none from this position, so we craft a synthetic test by
+        # using any best move and asserting the flag stays False.
+        any_move = next(iter(board.legal_moves))
+        infos = evals_to_infos(
+            [0, -300, -350, -400, -500, -600],
+            turn=chess.BLACK,
+            moves=[any_move, any_move, any_move, any_move, any_move, any_move],
+        )
+        result = compute_volatility(board, FakeEngine(scripts=[infos]))
+        assert result.recapture is False

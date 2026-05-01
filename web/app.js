@@ -123,12 +123,20 @@
     // The main board row has no [data-for] because it is shared between the
     // editor and game tabs. Full-page tabs replace it entirely.
     const boardRow = document.querySelector(".board-row");
+    const appMain = document.querySelector("main.app");
     if (boardRow) boardRow.classList.toggle("hidden", name === "about" || name === "library");
+    if (appMain) appMain.classList.toggle("app--game-wide", name === "game");
+    if (boardRow) boardRow.classList.toggle("board-row--game-wide", name === "game");
+    if (name !== "game") clearLastMoveDecor();
+    else paintLastMoveDecor();
     // Re-show conditional children inside game-panel only if they have data
     if (name === "game") {
       if (loadedPlies && loadedPlies.length) moveListWrap.classList.remove("hidden");
       if (chart) chartWrap.classList.remove("hidden");
       if (gameStatsEl && plyResults.some(Boolean)) gameStatsEl.classList.remove("hidden");
+      if (chart && chartWrap && !chartWrap.classList.contains("hidden")) {
+        requestAnimationFrame(() => chart.resize());
+      }
     }
     if (name === "about") ensureAboutDemos();
     if (name === "library") refreshLibraryTable();
@@ -723,6 +731,79 @@
   // ── Board ─────────────────────────────────────────────────────────────── //
   let suppressSync = false;
 
+  // Game scrubber state (declared before Chessboard() so onMoveEnd can close
+  // over the live bindings without temporal-dead-zone issues).
+  let loadedPlies = [];
+  let plyResults = [];
+  let currentPlyIdx = -1;
+
+  const SQ_LAST_FROM = "last-move-from";
+  const SQ_LAST_TO = "last-move-to";
+
+  function gameTabActive() {
+    return Boolean(
+      document.querySelector(".tab[data-tab='game']")?.classList.contains("active")
+    );
+  }
+
+  function clearLastMoveDecor() {
+    document.querySelectorAll("#board [data-square]").forEach((el) => {
+      el.classList.remove(SQ_LAST_FROM, SQ_LAST_TO);
+      el.querySelectorAll(".last-move-piece-badge").forEach((n) => n.remove());
+    });
+  }
+
+  function figurineOnSquare(fen, square) {
+    try {
+      const g = new Chess(fen);
+      const p = g.get(square);
+      if (!p) return "";
+      const w = { p: "♙", n: "♘", b: "♗", r: "♖", q: "♕", k: "♔" };
+      const b = { p: "♟", n: "♞", b: "♝", r: "♜", q: "♛", k: "♚" };
+      const set = p.color === "w" ? w : b;
+      return set[p.type] || "";
+    } catch (_) {
+      return "";
+    }
+  }
+
+  function squaresFromPly(prev) {
+    if (!prev) return null;
+    if (prev.from && prev.to) return { from: prev.from, to: prev.to };
+    const uci = prev.move_uci || "";
+    if (uci.length < 4) return null;
+    return { from: uci.slice(0, 2), to: uci.slice(2, 4) };
+  }
+
+  function paintLastMoveDecor() {
+    if (!gameTabActive() || !loadedPlies.length) {
+      clearLastMoveDecor();
+      return;
+    }
+    clearLastMoveDecor();
+    if (currentPlyIdx <= 0) return;
+    const prev = loadedPlies[currentPlyIdx - 1];
+    const sq = squaresFromPly(prev);
+    if (!sq) return;
+    const entry = loadedPlies[currentPlyIdx];
+    if (!entry || !entry.fen_before) return;
+
+    const fromEl = document.querySelector(`#board .square-${sq.from}`);
+    const toEl = document.querySelector(`#board .square-${sq.to}`);
+    if (fromEl) fromEl.classList.add(SQ_LAST_FROM);
+    if (toEl) {
+      toEl.classList.add(SQ_LAST_TO);
+      const fig = figurineOnSquare(entry.fen_before, sq.to);
+      if (fig) {
+        const badge = document.createElement("span");
+        badge.className = "last-move-piece-badge";
+        badge.textContent = fig;
+        badge.setAttribute("aria-hidden", "true");
+        toEl.appendChild(badge);
+      }
+    }
+  }
+
   // Hoisted shared state for the analyze/invalidate helpers below. These are
   // consumed by scheduleAutoAnalyze() and analyzeFen() later in the module.
   let autoTimer = null;
@@ -775,11 +856,17 @@
       if (captured) soundCapture();
       else soundMove();
     },
+    onMoveEnd: () => {
+      paintLastMoveDecor();
+      refreshArrow();
+    },
   });
 
   window.addEventListener("resize", () => {
     board.resize();
     refreshArrow();
+    paintLastMoveDecor();
+    if (chart && gameTabActive()) requestAnimationFrame(() => chart.resize());
   });
 
   // Chess.com-style keyboard navigation through PGN plies. Runs on the game
@@ -867,6 +954,7 @@
       suppressSync = true;
       try { board.position(parts[0], false); } finally { suppressSync = false; }
     }
+    clearLastMoveDecor();
     // suppressSync swallowed onChange, so the shared cleanup path didn't run.
     // Do it explicitly — otherwise a FEN-paste edit leaves stale engine lines
     // and arrows on the screen until the next re-analysis lands.
@@ -953,13 +1041,19 @@
 
   btnFlip.addEventListener("click", () => {
     board.flip();
-    setTimeout(refreshArrow, 0);
+    setTimeout(() => {
+      refreshArrow();
+      paintLastMoveDecor();
+    }, 0);
   });
 
   if (btnFlipGame) {
     btnFlipGame.addEventListener("click", () => {
       board.flip();
-      setTimeout(refreshArrow, 0);
+      setTimeout(() => {
+        refreshArrow();
+        paintLastMoveDecor();
+      }, 0);
     });
   }
 
@@ -1473,9 +1567,6 @@
   }
 
   // ── PGN / Game ───────────────────────────────────────────────────────── //
-  let loadedPlies = [];
-  let plyResults = [];
-  let currentPlyIdx = -1;
   let chart = null;
   let pgnController = null;
 
@@ -1492,6 +1583,7 @@
     resetGameStats();
     clearTopLinesLists();
     setTopMove(null);
+    clearLastMoveDecor();
     destroyChart();
     // Clear heat band
     const hb = document.getElementById("heatBand");
@@ -1599,7 +1691,15 @@
       for (const mv of history) {
         const fenBefore = replay.fen();
         const san = replay.move({ from: mv.from, to: mv.to, promotion: mv.promotion }).san;
-        plies.push({ san, fen_before: fenBefore, fen_after: replay.fen() });
+        const move_uci = mv.from + mv.to + (mv.promotion || "");
+        plies.push({
+          san,
+          fen_before: fenBefore,
+          fen_after: replay.fen(),
+          from: mv.from,
+          to: mv.to,
+          move_uci,
+        });
       }
       return plies;
     } catch (_) { return null; }
@@ -1983,6 +2083,7 @@
       }
       recomputeGameStats();
       if (currentPlyIdx >= 0) jumpToPly(currentPlyIdx);
+      if (chart) requestAnimationFrame(() => chart.resize());
     }
   }
 
@@ -2133,11 +2234,19 @@
     resetGame();
     pgnInput.value = game.pgn || "";
     collapsePgnDrawer(game.pgn, (game.report.plies || []).length);
-    loadedPlies = (game.report.plies || []).map((ply) => ({
-      san: ply.san,
-      fen_before: ply.fen_before,
-      fen_after: ply.fen_after,
-    }));
+    loadedPlies = (game.report.plies || []).map((ply) => {
+      const uci = ply.move_uci || "";
+      const from = uci.length >= 2 ? uci.slice(0, 2) : "";
+      const to = uci.length >= 4 ? uci.slice(2, 4) : "";
+      return {
+        san: ply.san,
+        fen_before: ply.fen_before,
+        fen_after: ply.fen_after,
+        from,
+        to,
+        move_uci: uci,
+      };
+    });
     plyResults = reportPliesToResults(game.report);
     renderMoveList();
     ensureChart();
@@ -2151,6 +2260,7 @@
     gameStatus.textContent = `Opened saved game: ${game.metadata.white} - ${game.metadata.black}`;
     setTab("game");
     if (loadedPlies.length) jumpToPly(0);
+    if (chart) requestAnimationFrame(() => chart.resize());
   }
 
   function parseSseChunk(chunk) {

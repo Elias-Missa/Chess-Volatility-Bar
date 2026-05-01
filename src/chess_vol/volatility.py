@@ -35,6 +35,7 @@ from chess_vol.config import (
     MATE_BASE,
     MATE_MAX_N,
     MATE_STEP,
+    RECAPTURE_DAMPEN,
 )
 
 # --------------------------------------------------------------------------- #
@@ -117,6 +118,39 @@ def _is_decided(e1_cp: int, e2_cp: int) -> bool:
     )
 
 
+def _is_obvious_recapture(
+    board: chess.Board,
+    line_evals: list[tuple[int, dict[str, Any]]],
+) -> bool:
+    """Detect a forced-recapture position.
+
+    Fires when the opponent's previous move was a capture on square S and the
+    engine's best line begins with a recapture on the same square. In that
+    setup every non-recapture alternative drops material by definition, so the
+    drop pattern looks like a knife edge even though the player has no real
+    choice — a false positive that this flag lets the caller dampen.
+
+    Requires ``board.move_stack`` to be non-empty: positions loaded directly
+    from a FEN have no recapture context and never trigger.
+    """
+    if not board.move_stack or not line_evals:
+        return False
+    pv = line_evals[0][1].get("pv") or []
+    if not pv:
+        return False
+    best_move = pv[0]
+    if not board.is_capture(best_move):
+        return False
+    last_move = board.peek()
+    if last_move.to_square != best_move.to_square:
+        return False
+    board.pop()
+    try:
+        return board.is_capture(last_move)
+    finally:
+        board.push(last_move)
+
+
 # --------------------------------------------------------------------------- #
 # Result dataclass                                                             #
 # --------------------------------------------------------------------------- #
@@ -162,6 +196,11 @@ class VolatilityResult:
     decided: bool = False
     """Whether the position is 'decided' per §3.4 (UI should dim the bar)."""
 
+    recapture: bool = False
+    """Whether the forced-recapture rule fired (V_local was multiplied by
+    ``RECAPTURE_DAMPEN``). True when the opponent's last move was a capture
+    and the engine's best move recaptures on the same square."""
+
     reason: str | None = None
     """``None`` normally; ``"only_move"``, ``"checkmate"``, or ``"stalemate"``
     when ``score`` is ``None``."""
@@ -192,6 +231,7 @@ class _RawResult:
     decided: bool
     reason: str | None
     analyses: int
+    recapture: bool = False
     top_lines: list[TopLine] = field(default_factory=list)
 
 
@@ -359,6 +399,10 @@ def _compute_raw(
         local_raw, scale, decided = _compute_local(evals, weights_fn, scale_fn)
         reason = None
 
+    recapture = _is_obvious_recapture(board, line_evals)
+    if recapture:
+        local_raw *= RECAPTURE_DAMPEN
+
     total_raw = local_raw
 
     if recurse_depth > 0:
@@ -407,6 +451,7 @@ def _compute_raw(
         decided=decided,
         reason=reason,
         analyses=analyses,
+        recapture=recapture,
         top_lines=top_lines,
     )
 
@@ -499,6 +544,7 @@ def compute_volatility(
             alt_evals_cp=raw.alts_cp,
             scale=raw.scale,
             decided=raw.decided,
+            recapture=raw.recapture,
             reason=raw.reason,
             recurse_depth_used=recurse_depth,
             analyses=raw.analyses,
@@ -514,6 +560,7 @@ def compute_volatility(
         alt_evals_cp=raw.alts_cp,
         scale=raw.scale,
         decided=raw.decided,
+        recapture=raw.recapture,
         reason=None,
         recurse_depth_used=recurse_depth,
         analyses=raw.analyses,

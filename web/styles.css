@@ -205,6 +205,43 @@ select {
   margin: 0 auto;
 }
 
+/* Game Analyzer: let the board row use full viewport width so the volatility
+   chart can stretch to the right edge instead of sitting in a fixed 500px rail. */
+main.app.app--game-wide {
+  max-width: none;
+  width: 100%;
+  padding-left: max(12px, env(safe-area-inset-left, 0px));
+  padding-right: max(12px, env(safe-area-inset-right, 0px));
+}
+
+.board-row.board-row--game-wide {
+  width: 100%;
+  max-width: none;
+  justify-content: center;
+  align-self: stretch;
+}
+
+.board-row.board-row--game-wide .game-right-panel {
+  flex: 1 1 320px;
+  min-width: 0;
+  max-width: none;
+  width: auto;
+}
+
+.board-row.board-row--game-wide .chart-wrap {
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.board-row.board-row--game-wide .chart-wrap canvas {
+  height: 280px !important;
+}
+
+.board-row.board-row--game-wide .heat-band {
+  margin-left: 10px;
+  margin-right: 10px;
+}
+
 /* ── Tab bar ────────────────────────────────────────────────── */
 .tab-bar {
   display: inline-flex;
@@ -1619,6 +1656,33 @@ select {
 .highlight1-32417,
 .highlight2-9c5d2 {
   box-shadow: inset 0 0 4px 2px rgba(57, 255, 20, 0.55) !important;
+}
+
+/* Last move (PGN scrubber) — custom classes so we do not clash with
+   chessboard.js drag highlights (highlight1 / highlight2). */
+#board .last-move-from {
+  box-shadow: inset 0 0 0 3px rgba(236, 188, 92, 0.55) !important;
+  background-color: rgba(236, 188, 92, 0.22) !important;
+}
+
+#board .last-move-to {
+  box-shadow: inset 0 0 0 3px rgba(57, 255, 20, 0.55) !important;
+  background-color: rgba(57, 255, 20, 0.16) !important;
+}
+
+#board .last-move-piece-badge {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  z-index: 4;
+  font-size: clamp(12px, calc(var(--board-size) / 36), 22px);
+  line-height: 1;
+  pointer-events: none;
+  user-select: none;
+  text-shadow:
+    0 0 3px rgba(0, 0, 0, 0.95),
+    0 1px 2px rgba(0, 0, 0, 0.85);
+  filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.65));
 }
 
 /* ── Loading animation on bars ──────────────────────────────── */
